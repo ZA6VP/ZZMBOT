@@ -61,11 +61,17 @@ process.on('uncaughtException', error => {
 // Connect to database and start bot
 async function startBot() {
     try {
-        await connectDatabase();
-        console.log('Connected to MongoDB');
+        // Try to connect to database (non-critical)
+        const dbConnected = await connectDatabase();
+        if (dbConnected) {
+            console.log('Connected to MongoDB');
+        } else {
+            console.log('Continuing without database - some features may be limited');
+        }
         
+        // Connect to Discord (critical)
         await client.login(process.env.DISCORD_TOKEN);
-        console.log('Bot logged in successfully');
+        console.log('Bot logged in successfully and is now online!');
     } catch (error) {
         console.error('Failed to start bot:', error);
         process.exit(1);

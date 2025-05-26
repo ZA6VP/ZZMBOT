@@ -4,7 +4,7 @@ const giveawaySchema = new mongoose.Schema({
     messageId: {
         type: String,
         required: true,
-        unique: true
+        index: true
     },
     channelId: {
         type: String,
@@ -45,7 +45,6 @@ const giveawaySchema = new mongoose.Schema({
 });
 
 // Index for efficient queries
-giveawaySchema.index({ messageId: 1 });
 giveawaySchema.index({ endTime: 1, active: 1 });
 
 module.exports = mongoose.model('Giveaway', giveawaySchema);

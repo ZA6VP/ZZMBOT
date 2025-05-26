@@ -4,15 +4,14 @@ async function connectDatabase() {
     try {
         const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/pdw-bot';
         
-        await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        await mongoose.connect(mongoUri);
         
         console.log('MongoDB connected successfully');
+        return true;
     } catch (error) {
-        console.error('MongoDB connection error:', error);
-        throw error;
+        console.error('MongoDB connection error:', error.message);
+        console.log('Bot will continue without database features');
+        return false;
     }
 }
 
