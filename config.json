@@ -1,0 +1,29 @@
+{
+  "prefix": "!",
+  "modRoleNames": ["Moderator", "Admin"],
+  "logChannel": "mod-logs",
+  "suggestChannel": "suggestions",
+  "levelUpRole": {
+    "5": "Active Member",
+    "10": "Veteran",
+    "15": "Expert",
+    "20": "Legend"
+  },
+  "giveaway": {
+    "managerRoles": ["Administrator", "Giveaway Host"],
+    "reactionEmoji": "🎉"
+  },
+  "xp": {
+    "messageXP": {
+      "min": 15,
+      "max": 25
+    },
+    "cooldown": 60000,
+    "xpPerLevel": 100
+  },
+  "automod": {
+    "enabled": true,
+    "filterBadWords": true,
+    "blockLinks": false
+  }
+}

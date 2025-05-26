@@ -1,0 +1,39 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Discord Bot Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "bot_server"
+
+[[workflows.workflow]]
+name = "Discord Bot Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install && node src/index.js"
+
+[[workflows.workflow]]
+name = "bot_server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install discord.js mongoose dotenv node-fetch"
+
+[deployment]
+run = ["sh", "-c", "npm install && node src/index.js"]
