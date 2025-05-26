@@ -10,9 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
+    "ffmpeg-static": "^5.2.0",
     "mongoose": "^8.15.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "spotify-web-api-node": "^5.0.2",
+    "ytdl-core": "^4.11.5"
   }
 }

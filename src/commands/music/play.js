@@ -1,0 +1,87 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { createInfoEmbed, createErrorEmbed } = require('../../utils/embedBuilder');
+const musicManager = require('../../utils/musicManager');
+
+module.exports = {
+    data: {
+        name: 'play',
+        description: 'Play music from Spotify',
+        usage: '!play <song name>',
+        category: 'music',
+        cooldown: 3
+    },
+    async execute(message, args) {
+        // Check if user is in a voice channel
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) {
+            return message.reply('You need to be in a voice channel to play music!');
+        }
+
+        // Check if a song was provided
+        if (!args.length) {
+            return message.reply('Please provide a song name to search for! Usage: `!play <song name>`');
+        }
+
+        const query = args.join(' ');
+        
+        try {
+            // Search Spotify for tracks
+            const tracks = await musicManager.searchSpotify(query, 5);
+            
+            if (tracks.length === 0) {
+                return message.reply('No tracks found on Spotify for that search!');
+            }
+
+            // Create embed with track selection
+            let description = 'Select a track to play:\n\n';
+            tracks.forEach((track, index) => {
+                const duration = Math.floor(track.duration / 60) + ':' + (track.duration % 60).toString().padStart(2, '0');
+                description += `**${index + 1}.** ${track.name}\n*by ${track.artist}* (${duration})\n\n`;
+            });
+
+            const embed = createInfoEmbed('🎵 Spotify Search Results', description)
+                .setColor('#1DB954')
+                .setFooter({ text: 'Click a number to select the track!' });
+
+            if (tracks[0].image) {
+                embed.setThumbnail(tracks[0].image);
+            }
+
+            // Create selection buttons
+            const row = new ActionRowBuilder();
+            for (let i = 0; i < Math.min(tracks.length, 5); i++) {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`select_track_${i}`)
+                        .setLabel(`${i + 1}`)
+                        .setStyle(ButtonStyle.Secondary)
+                );
+            }
+
+            const response = await message.channel.send({ embeds: [embed], components: [row] });
+
+            // Store tracks for selection
+            if (!message.client.trackSelections) {
+                message.client.trackSelections = new Map();
+            }
+            message.client.trackSelections.set(response.id, {
+                tracks: tracks,
+                requesterId: message.author.id,
+                voiceChannel: voiceChannel,
+                expiresAt: Date.now() + 60000 // 1 minute
+            });
+
+            // Clean up after 1 minute
+            setTimeout(() => {
+                if (message.client.trackSelections.has(response.id)) {
+                    message.client.trackSelections.delete(response.id);
+                    response.edit({ components: [] }).catch(() => {});
+                }
+            }, 60000);
+
+        } catch (error) {
+            console.error('Error in play command:', error);
+            message.reply('There was an error searching for tracks. Please try again!');
+        }
+    },
+};

@@ -1,5 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
 const { createInfoEmbed, createErrorEmbed } = require('../utils/embedBuilder');
+const musicManager = require('../utils/musicManager');
 const fs = require('fs');
 
 module.exports = {
@@ -8,6 +9,69 @@ module.exports = {
         if (!interaction.isButton()) return;
 
         const { customId, user, guild, channel } = interaction;
+
+        // Handle track selection
+        if (customId.startsWith('select_track_')) {
+            await interaction.deferReply({ ephemeral: true });
+
+            const trackIndex = parseInt(customId.split('_')[2]);
+            const selectionData = interaction.client.trackSelections?.get(interaction.message.id);
+
+            if (!selectionData) {
+                return interaction.editReply({ content: 'This track selection has expired! Please search again.' });
+            }
+
+            if (selectionData.requesterId !== user.id) {
+                return interaction.editReply({ content: 'Only the person who requested the search can select a track!' });
+            }
+
+            const selectedTrack = selectionData.tracks[trackIndex];
+            if (!selectedTrack) {
+                return interaction.editReply({ content: 'Invalid track selection!' });
+            }
+
+            try {
+                // Join voice channel if not already connected
+                let connection = musicManager.connections.get(guild.id);
+                if (!connection) {
+                    connection = await musicManager.joinChannel(selectionData.voiceChannel);
+                    if (!connection) {
+                        return interaction.editReply({ content: 'Failed to join the voice channel!' });
+                    }
+                }
+
+                // Add to queue
+                const position = musicManager.addToQueue(guild.id, selectedTrack);
+                
+                // If this is the first track, start playing
+                const queueStatus = musicManager.getQueueStatus(guild.id);
+                if (!queueStatus.isPlaying) {
+                    await musicManager.playTrack(guild.id, selectedTrack);
+                    
+                    const embed = createInfoEmbed('🎵 Now Playing', 
+                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
+                    ).setColor('#1DB954');
+
+                    if (selectedTrack.image) {
+                        embed.setThumbnail(selectedTrack.image);
+                    }
+
+                    await channel.send({ embeds: [embed] });
+                    await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
+                } else {
+                    await interaction.editReply({ content: `**${selectedTrack.name}** by ${selectedTrack.artist} has been added to the queue! (Position: ${position})` });
+                }
+
+                // Clean up the selection
+                interaction.client.trackSelections.delete(interaction.message.id);
+                await interaction.message.edit({ components: [] });
+
+            } catch (error) {
+                console.error('Error handling track selection:', error);
+                await interaction.editReply({ content: 'There was an error playing the track!' });
+            }
+            return;
+        }
 
         // Handle ticket creation
         if (customId === 'report_ticket' || customId === 'feedback_ticket') {
