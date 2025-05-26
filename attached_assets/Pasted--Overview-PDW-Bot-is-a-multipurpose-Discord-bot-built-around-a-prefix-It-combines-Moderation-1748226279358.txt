@@ -1,0 +1,123 @@
+📜 Overview
+PDW-Bot is a multipurpose Discord bot built around a ! prefix. It combines:
+* Moderation (ban, kick, timeout, purge, lock/unlock, mute, warn, infractions)
+* Leveling & XP system (track activity, roles on rank-up, leaderboards)
+* Giveaways with multiple winners
+* Utility (ping, user/server info, cleanup)
+* Fun (memes, dice rolls, trivia)
+* Logging & Auto-mod (bad-word filtering, link blocking)
+* Configurable via environment variables or a JSON/YAML config file
+All admin commands require the proper Discord permissions (e.g. Ban Members, Kick Members, Manage Messages, etc.).
+
+📂 Suggested Project Structure
+bash
+CopyEdit
+pdw-bot/
+├─ .env                  # Your DISCORD_TOKEN, MONGODB_URI, etc.
+├─ config.json           # Prefix, default roles, XP settings, etc.
+├─ package.json          # Dependencies (discord.js, mongoose, etc.)
+├─ src/
+│   ├─ index.js          # Bot entry point
+│   ├─ commands/         
+│   │   ├─ moderation/    # ban.js, kick.js, timeout.js, purge.js, mute.js, warn.js, infractions.js
+│   │   ├─ giveaways/     # gstart.js, gend.js
+│   │   ├─ leveling/      # xp.js, rank.js, leaderboard.js
+│   │   ├─ utility/       # ping.js, serverinfo.js, userinfo.js, help.js
+│   │   ├─ fun/           # meme.js, roll.js, trivia.js
+│   │   ├─ logs/          # ready.js (setup logging channels), guildMemberAdd.js, messageDelete.js
+│   │   └─ admin/         # lock.js, unlock.js, announce.js
+│   ├─ events/           # messageCreate.js, interactionCreate.js
+│   └─ utils/            # permissionChecks.js, embedBuilder.js, database.js
+└─ README.md             # This spec & setup instructions
+
+🔑 Permissions & Roles
+* Bot needs:
+    * Administrator (or at least Manage Channels, Manage Roles, Ban Members, Kick Members, Manage Messages, Timeout Members, Send Messages, Embed Links, Read Message History)
+* Your staff roles should grant the matching Discord permissions:
+    * Moderator role → Ban Members, Kick Members, Timeout Members
+    * Helper role → Manage Messages (for purge), Manage Channels (for lock/unlock)
+    * Administrator → All permissions, plus bot sensitive commands (announce, config)
+
+⚙️ Configuration
+.env
+env
+CopyEdit
+DISCORD_TOKEN=your_token_here
+MONGODB_URI=your_mongo_connection
+DEFAULT_PREFIX=!
+config.json
+json
+CopyEdit
+{
+  "prefix": "!",
+  "modRoleNames": ["Moderator","Admin"],
+  "logChannel": "mod-logs",
+  "levelUpRole": {"5": "Active Member", "10": "Veteran"},
+  "giveaway": {
+    "managerRoles": ["Administrator","Giveaway Host"],
+    "reactionEmoji": "🎉"
+  }
+}
+
+📋 Command Reference
+1. Moderation
+Command	Perms Required	Description
+!ban <@user> [reason]	Ban Members	Bans user, DMs them an embed (“You’ve been permanently banned…”) and logs in mod-logs.
+!unban <userID>	Ban Members	Unbans user by ID, logs in mod-logs (“User has been unbanned.”).
+!kick <@user> [reason]	Kick Members	Kicks user, DMs them an embed (“You’ve been kicked…”) and logs in mod-logs.
+!timeout <@user> <duration>	Timeout Members	Applies a timeout (e.g. 10m, 2h, 1d, 1w), logs action.
+!mute <@user> [duration]	Manage Roles	Assigns “Muted” role; optional auto-unmute after duration.
+!warn <@user> [reason]	Manage Messages	Issues a warning, tracks in DB; use !infractions to list user’s warnings.
+!infractions <@user>	Manage Messages	Displays a user’s recorded warns, kicks, bans, timeouts, etc.
+!purge <number>	Manage Messages	Deletes the specified number of messages in the channel.
+!lock / !unlock	Manage Channels	Toggles send-message permission for @everyone in the current channel.
+2. Giveaways
+Command	Perms Required	Description
+!gstart <duration> <prize> <winners>	Administrator / Host	Starts a giveaway (e.g. !gstart 1h Nitro 2).
+!gend <messageID>	Administrator / Host	Ends a running giveaway early.
+!greroll <messageID> <winners>	Administrator / Host	Picks new winners from ended giveaway.
+3. Leveling & XP
+Command	Perms Required	Description
+!xp <@user?>	Everyone	Shows your or another user’s current XP & level.
+!leaderboard [page]	Everyone	Displays the server’s XP leaderboard.
+!setlevelrole <lvl> <role>	Administrator	Automatically grants a role when a user hits a level.
+4. Utility
+Command	Perms Required	Description
+!ping	Everyone	Bot’s latency.
+!userinfo <@user?>	Everyone	Displays account/server join date, roles, avatar.
+!serverinfo	Everyone	Server stats: members, channels, created date.
+!help [command]	Everyone	Lists all commands or detailed help for one.
+!announce <#channel> <message>	Administrator	Sends an embed announcement.
+!suggest <text>	Everyone	Collects suggestions to a configurable channel.
+5. Fun & Misc
+Command	Perms Required	Description
+!meme	Everyone	Fetches a random meme (Reddit API).
+!roll <sides>	Everyone	Rolls a numbered dice (default 6 sides).
+!cat / !dog	Everyone	Random cute animal pic.
+!urban <term>	Everyone	Urban Dictionary lookup.
+!trivia	Everyone	Starts a quick trivia question.
+
+🚀 Deployment & Hosting
+1. Local testing bash CopyEdit   git clone https://github.com/yourname/pdw-bot.git
+2. cd pdw-bot
+3. npm install
+4. cp .env.example .env
+5. # fill in your .env values
+6. node src/index.js
+7.   
+8. Production
+    * Heroku: push your repo, set config vars in dashboard.
+    * Replit: import GitHub, add secrets.
+    * VPS / Docker: Dockerize with a Dockerfile, set up a systemd service or container.
+9. Databases & Storage
+    * Use MongoDB (e.g. Atlas) for warnings, XP, giveaways.
+    * Store giveaways & configuration in JSON or a dedicated config collection.
+
+✅ Next Steps
+1. Scaffold your project folder as above.
+2. Install discord.js (v14+) or discord.py (if you prefer Python).
+3. Implement a command handler and event loader.
+4. Add individual command files, each checking:
+    * The ! prefix from your config.
+    * User permissions (using PermissionFlagsBits or similar).
+    * Optional role checks (roleCache.some(r=>…)).
