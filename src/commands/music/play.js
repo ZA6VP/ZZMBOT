@@ -76,24 +76,32 @@ module.exports = {
 
             const response = await message.channel.send({ embeds: [embed], components: [row] });
 
-            // Store tracks for selection
+            // Store tracks for selection with proper voice channel reference
             if (!message.client.trackSelections) {
                 message.client.trackSelections = new Map();
             }
+            
+            // Get voice channel again for storage
+            const member = message.member || await message.guild.members.fetch(message.author.id);
+            const userVoiceChannel = member.voice?.channel;
+            
             message.client.trackSelections.set(response.id, {
                 tracks: tracks,
                 requesterId: message.author.id,
-                voiceChannel: voiceChannel,
-                expiresAt: Date.now() + 60000 // 1 minute
+                voiceChannel: userVoiceChannel,
+                expiresAt: Date.now() + 300000 // 5 minutes instead of 1
             });
 
-            // Clean up after 1 minute
+            console.log(`Stored track selection for message ${response.id}, expires in 5 minutes`);
+
+            // Clean up after 5 minutes
             setTimeout(() => {
                 if (message.client.trackSelections.has(response.id)) {
                     message.client.trackSelections.delete(response.id);
                     response.edit({ components: [] }).catch(() => {});
+                    console.log(`Cleaned up expired track selection ${response.id}`);
                 }
-            }, 60000);
+            }, 300000);
 
         } catch (error) {
             console.error('Error in play command:', error);

@@ -15,9 +15,23 @@ module.exports = {
             await interaction.deferReply({ ephemeral: true });
 
             const trackIndex = parseInt(customId.split('_')[2]);
+            
+            console.log(`Track selection attempt: ${trackIndex}, message ID: ${interaction.message.id}`);
+            console.log(`Available selections:`, interaction.client.trackSelections?.size || 0);
+            
             const selectionData = interaction.client.trackSelections?.get(interaction.message.id);
 
             if (!selectionData) {
+                console.log('No selection data found for message:', interaction.message.id);
+                return interaction.editReply({ content: 'This track selection has expired! Please search again.' });
+            }
+
+            console.log(`Selection data found for user: ${selectionData.requesterId}`);
+
+            // Check if selection has expired
+            if (Date.now() > selectionData.expiresAt) {
+                console.log('Selection has expired');
+                interaction.client.trackSelections.delete(interaction.message.id);
                 return interaction.editReply({ content: 'This track selection has expired! Please search again.' });
             }
 
