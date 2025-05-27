@@ -10,6 +10,13 @@ module.exports = {
         cooldown: 5
     },
     async execute(message, args) {
+        // Check if command is used in the correct channel
+        const allowedChannelId = '1377002851678687295';
+        if (message.channel.id !== allowedChannelId) {
+            const embed = createErrorEmbed('Wrong Channel', `This command can only be used in <#${allowedChannelId}>.`);
+            return message.reply({ embeds: [embed] });
+        }
+
         try {
             const page = parseInt(args[0]) || 1;
             const usersPerPage = 10;

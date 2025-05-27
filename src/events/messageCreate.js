@@ -28,13 +28,31 @@ module.exports = {
                 const result = await addXP(message.author.id, message.guild.id, xpGain);
                 
                 if (result && result.leveledUp) {
-                    const levelRole = config.levelUpRole[result.newLevel.toString()];
-                    if (levelRole && message.guild.roles.cache.find(r => r.name === levelRole)) {
-                        const role = message.guild.roles.cache.find(r => r.name === levelRole);
-                        await message.member.roles.add(role).catch(console.error);
-                        message.channel.send(`🎉 Congratulations ${message.author}! You've reached level ${result.newLevel} and earned the **${levelRole}** role!`);
-                    } else {
-                        message.channel.send(`🎉 Congratulations ${message.author}! You've reached level ${result.newLevel}!`);
+                    const levelUpChannelId = '1375225897317175397';
+                    const levelUpChannel = message.guild.channels.cache.get(levelUpChannelId);
+                    
+                    if (levelUpChannel) {
+                        const levelRole = config.levelUpRole[result.newLevel.toString()];
+                        if (levelRole && message.guild.roles.cache.find(r => r.name === levelRole)) {
+                            const role = message.guild.roles.cache.find(r => r.name === levelRole);
+                            await message.member.roles.add(role).catch(console.error);
+                            
+                            const levelUpEmbed = createInfoEmbed('🎉 Level Up! 🎉', 
+                                `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}** and earned the **${levelRole}** role!`
+                            )
+                            .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                            .setColor('#FFD700');
+                            
+                            levelUpChannel.send({ embeds: [levelUpEmbed] });
+                        } else {
+                            const levelUpEmbed = createInfoEmbed('🎉 Level Up! 🎉', 
+                                `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}**!`
+                            )
+                            .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                            .setColor('#FFD700');
+                            
+                            levelUpChannel.send({ embeds: [levelUpEmbed] });
+                        }
                     }
                 }
                 

@@ -1,6 +1,6 @@
 const { PermissionFlagsBits } = require('discord.js');
 const { hasPermission, hasRole } = require('../../utils/permissionChecks');
-const { createInfoEmbed, createErrorEmbed } = require('../../utils/embedBuilder');
+const { createInfoEmbed, createErrorEmbed, createSuccessEmbed } = require('../../utils/embedBuilder');
 const Giveaway = require('../../models/Giveaway');
 
 function parseDuration(duration) {
@@ -138,7 +138,10 @@ module.exports = {
 
                         // Announce winners
                         const winnersText = winners.map(id => `<@${id}>`).join(', ');
-                        await message.channel.send(`🎉 Congratulations ${winnersText}! You won **${prize}**!`);
+                        const winnerEmbed = createSuccessEmbed('🎉 Giveaway Winners! 🎉', 
+                            `Congratulations ${winnersText}!\nYou have won **${prize}**!`
+                        ).setColor('#FFD700');
+                        await message.channel.send({ embeds: [winnerEmbed] });
                     } else {
                         // No participants
                         const noWinnersEmbed = createInfoEmbed('🎉 GIVEAWAY ENDED 🎉', 

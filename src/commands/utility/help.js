@@ -1,4 +1,4 @@
-const { createInfoEmbed, createErrorEmbed } = require('../../utils/embedBuilder');
+const { createInfoEmbed, createErrorEmbed, createSuccessEmbed } = require('../../utils/embedBuilder');
 
 module.exports = {
     data: {
