@@ -1,24 +1,16 @@
 {
   "prefix": "!",
-  "modRoleNames": [
-    "Moderator",
-    "Admin"
-  ],
+  "modRoleNames": ["Moderator", "Admin"],
   "logChannel": "mod-logs",
   "suggestChannel": "suggestions",
   "levelUpRole": {
     "5": "Active Member",
     "10": "Veteran",
     "15": "Expert",
-    "20": "Legend",
-    "85": "Level 85+",
-    "100": "Level 100+"
+    "20": "Legend"
   },
   "giveaway": {
-    "managerRoles": [
-      "Administrator",
-      "Giveaway Host"
-    ],
+    "managerRoles": ["Administrator", "Giveaway Host"],
     "reactionEmoji": "🎉"
   },
   "xp": {
