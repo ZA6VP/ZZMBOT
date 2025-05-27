@@ -60,57 +60,7 @@ class MusicManager {
         }
     }
 
-    async searchYouTube(query) {
-        try {
-            console.log(`Searching YouTube for: ${query}`);
-            
-            // Search for videos using youtube-sr
-            const searchResults = await ytsr.search(query, {
-                limit: 10,
-                type: 'video'
-            });
-            
-            if (!searchResults || searchResults.length === 0) {
-                console.log('No YouTube results found');
-                return null;
-            }
-            
-            // Filter out short videos and try each result
-            const filteredResults = searchResults.filter(video => 
-                video.duration && 
-                video.duration.seconds > 30 && 
-                video.duration.seconds < 600 // Between 30 seconds and 10 minutes
-            );
-            
-            const resultsToTry = filteredResults.length > 0 ? filteredResults : searchResults;
-            
-            for (const video of resultsToTry) {
-                try {
-                    console.log(`Checking video: ${video.title} (${video.duration?.text || 'unknown duration'})`);
-                    
-                    // Validate the video URL with ytdl-core
-                    const isValid = ytdl.validateURL(video.url);
-                    if (isValid) {
-                        // Double check by getting basic info
-                        const info = await ytdl.getBasicInfo(video.url);
-                        if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
-                            console.log(`✅ Found working YouTube video: ${video.title} - ${video.url}`);
-                            return video.url;
-                        }
-                    }
-                } catch (err) {
-                    console.log(`❌ Video ${video.url} not valid:`, err.message);
-                    continue;
-                }
-            }
-            
-            console.log('No valid YouTube videos found after checking all results');
-            return null;
-        } catch (error) {
-            console.error('Error searching YouTube:', error);
-            return null;
-        }
-    }
+    
 
     getQueue(guildId) {
         if (!this.queues.has(guildId)) {
@@ -196,7 +146,7 @@ class MusicManager {
             console.log(`Attempting to play: ${track.name} by ${track.artist}`);
             this.currentTracks.set(guildId, track);
             
-            // First, try to use Spotify preview URL if available
+            // Only use Spotify preview URL - no YouTube fallback
             if (track.preview_url) {
                 console.log(`Using Spotify preview URL: ${track.preview_url}`);
                 
@@ -216,96 +166,18 @@ class MusicManager {
                         }
                         
                         player.play(resource);
-                        console.log(`Successfully started playing Spotify preview: ${track.name} by ${track.artist}`);
+                        console.log(`✅ Successfully started playing Spotify preview: ${track.name} by ${track.artist}`);
                         return true;
+                    } else {
+                        console.error('Failed to fetch Spotify preview - response not OK');
+                        return false;
                     }
                 } catch (spotifyError) {
-                    console.log('Spotify preview failed, falling back to YouTube:', spotifyError.message);
-                }
-            } else {
-                console.log('No Spotify preview available, searching YouTube as fallback');
-            }
-            
-            // Fallback to YouTube if Spotify preview not available or failed
-            const searchQuery = `${track.name} ${track.artist}`;
-            const youtubeUrl = await this.searchYouTube(searchQuery);
-            
-            if (!youtubeUrl) {
-                console.error('Could not find YouTube video for track and no Spotify preview available');
-                return false;
-            }
-            
-            try {
-                console.log(`Creating audio stream from: ${youtubeUrl}`);
-                
-                // Try different quality options if one fails
-                const qualityOptions = [
-                    { filter: 'audioonly', quality: 'highestaudio' },
-                    { filter: 'audioonly', quality: 'lowestaudio' },
-                    { filter: 'audio', quality: 'highestaudio' }
-                ];
-                
-                let stream = null;
-                let lastError = null;
-                
-                for (const options of qualityOptions) {
-                    try {
-                        console.log(`Trying audio extraction with options:`, options);
-                        
-                        stream = ytdl(youtubeUrl, {
-                            ...options,
-                            highWaterMark: 1 << 25,
-                            requestOptions: {
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                                }
-                            }
-                        });
-                        
-                        // Test if stream works by waiting for first data
-                        await new Promise((resolve, reject) => {
-                            const timeout = setTimeout(() => reject(new Error('Stream timeout')), 10000);
-                            stream.once('response', () => {
-                                clearTimeout(timeout);
-                                resolve();
-                            });
-                            stream.once('error', (err) => {
-                                clearTimeout(timeout);
-                                reject(err);
-                            });
-                        });
-                        
-                        console.log(`Successfully created stream with options:`, options);
-                        break;
-                        
-                    } catch (streamError) {
-                        console.log(`Failed with options ${JSON.stringify(options)}:`, streamError.message);
-                        lastError = streamError;
-                        stream = null;
-                    }
-                }
-                
-                if (!stream) {
-                    console.error('All audio extraction methods failed. Last error:', lastError);
+                    console.error('Error playing Spotify preview:', spotifyError.message);
                     return false;
                 }
-                
-                const resource = createAudioResource(stream, {
-                    inputType: 'arbitrary',
-                    inlineVolume: true
-                });
-                
-                // Set volume to 50%
-                if (resource.volume) {
-                    resource.volume.setVolume(0.5);
-                }
-                
-                player.play(resource);
-                console.log(`Successfully started playing: ${track.name} by ${track.artist}`);
-                return true;
-                
-            } catch (ytdlError) {
-                console.error('YTDL error:', ytdlError);
+            } else {
+                console.error('❌ No Spotify preview available for this track');
                 return false;
             }
         } catch (error) {

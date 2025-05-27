@@ -150,7 +150,7 @@ module.exports = {
 
                     if (success) {
                         const embed = createInfoEmbed('🎵 Now Playing', 
-                            `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nFrom album: ${selectedTrack.album || 'Unknown'}`
+                            `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nFrom album: ${selectedTrack.album || 'Unknown'}\n🎵 *Playing 30-second Spotify preview*`
                         ).setColor('#1DB954');
 
                         if (selectedTrack.image) {
@@ -160,7 +160,7 @@ module.exports = {
                         await interaction.editReply({ embeds: [embed] });
                     } else {
                         await interaction.editReply({ 
-                            content: 'Failed to play the track. The song might not be available on YouTube.' 
+                            content: `❌ **${selectedTrack.name}** by ${selectedTrack.artist} doesn't have a Spotify preview available. Please try a different track!` 
                         });
                     }
                 } else {
