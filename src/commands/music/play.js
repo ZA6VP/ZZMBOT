@@ -1,116 +1,111 @@
-
-const { createSuccessEmbed, createErrorEmbed, createInfoEmbed } = require('../../utils/embedBuilder');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { createInfoEmbed, createErrorEmbed } = require('../../utils/embedBuilder');
 const musicManager = require('../../utils/musicManager');
 
 module.exports = {
     data: {
         name: 'play',
-        description: 'Play a song from Spotify',
+        description: 'Play music from Spotify',
         usage: '!play <song name>',
-        aliases: ['p'],
+        category: 'music',
         cooldown: 3
     },
     async execute(message, args) {
-        // Force refresh member object to get current voice state
         try {
-            await message.member.fetch();
+            // Check if user is in a voice channel with better detection
+            const member = message.member || await message.guild.members.fetch(message.author.id);
+            const voiceChannel = member.voice?.channel;
+            
+            console.log(`Voice check for ${message.author.username}: ${voiceChannel ? voiceChannel.name : 'No channel'}`);
+            
+            if (!voiceChannel) {
+                return message.reply('You need to be in a voice channel to play music!');
+            }
+
+            // Check bot permissions in voice channel
+            const botMember = message.guild.members.me;
+            const permissions = voiceChannel.permissionsFor(botMember);
+            if (!permissions.has(['Connect', 'Speak'])) {
+                return message.reply('I need permission to connect and speak in your voice channel!');
+            }
         } catch (error) {
-            console.error('Error fetching member:', error);
+            console.error('Error checking voice channel:', error);
+            return message.reply('There was an error checking your voice channel status!');
         }
 
-        // Check if user is in a voice channel
-        const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) {
-            const embed = createErrorEmbed('No Voice Channel', 'You need to be in a voice channel to play music!');
-            return message.reply({ embeds: [embed] });
+        // Check if a song was provided
+        if (!args.length) {
+            return message.reply('Please provide a song name to search for! Usage: `!play <song name>`');
         }
 
-        // Check if bot has permissions to join and speak
-        const permissions = voiceChannel.permissionsFor(message.client.user);
-        if (!permissions.has('Connect') || !permissions.has('Speak')) {
-            const embed = createErrorEmbed('Missing Permissions', 'I need permissions to join and speak in your voice channel!');
-            return message.reply({ embeds: [embed] });
-        }
-
-        // Get search query
         const query = args.join(' ');
-        if (!query) {
-            const embed = createErrorEmbed('No Song Specified', 'Please provide a song name to search for!\nUsage: `!play <song name>`');
-            return message.reply({ embeds: [embed] });
-        }
-
+        
         try {
-            // Send searching message
-            const searchingEmbed = createInfoEmbed('🔍 Searching...', `Looking for: **${query}**`);
-            const searchMessage = await message.reply({ embeds: [searchingEmbed] });
-
-            // Search Spotify for the track
-            const spotifyResults = await musicManager.searchSpotify(query, 1);
+            // Search Spotify for tracks
+            const tracks = await musicManager.searchSpotify(query, 5);
             
-            if (spotifyResults.length === 0) {
-                const embed = createErrorEmbed('No Results', `No songs found for: **${query}**`);
-                return searchMessage.edit({ embeds: [embed] });
+            if (tracks.length === 0) {
+                return message.reply('No tracks found on Spotify for that search!');
             }
 
-            const track = spotifyResults[0];
-            
-            // Join voice channel if not already connected
-            let connection = musicManager.connections.get(message.guild.id);
-            if (!connection) {
-                connection = await musicManager.joinChannel(voiceChannel);
-                if (!connection) {
-                    const embed = createErrorEmbed('Connection Failed', 'Failed to join the voice channel!');
-                    return searchMessage.edit({ embeds: [embed] });
-                }
+            // Create embed with track selection
+            let description = 'Select a track to play:\n\n';
+            tracks.forEach((track, index) => {
+                const duration = Math.floor(track.duration / 60) + ':' + (track.duration % 60).toString().padStart(2, '0');
+                description += `**${index + 1}.** ${track.name}\n*by ${track.artist}* (${duration})\n\n`;
+            });
+
+            const embed = createInfoEmbed('🎵 Spotify Search Results', description)
+                .setColor('#1DB954')
+                .setFooter({ text: 'Click a number to select the track!' });
+
+            if (tracks[0].image) {
+                embed.setThumbnail(tracks[0].image);
             }
 
-            // Add to queue
-            const position = musicManager.addToQueue(message.guild.id, track);
-            
-            if (position === 1) {
-                // Start playing immediately if this is the first song
-                const success = await musicManager.playTrack(message.guild.id, track);
-                
-                if (success) {
-                    const embed = createSuccessEmbed('🎵 Now Playing', 
-                        `**${track.name}** by **${track.artist}**`
-                    )
-                    .addFields(
-                        { name: 'Duration', value: `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}`, inline: true },
-                        { name: 'Requested by', value: message.author.toString(), inline: true }
-                    );
-                    
-                    if (track.image) {
-                        embed.setThumbnail(track.image);
-                    }
-                    
-                    searchMessage.edit({ embeds: [embed] });
-                } else {
-                    const embed = createErrorEmbed('Playback Failed', 'Failed to start playing the track. This might be due to the song not being available on YouTube.');
-                    searchMessage.edit({ embeds: [embed] });
-                }
-            } else {
-                // Added to queue
-                const embed = createSuccessEmbed('📋 Added to Queue', 
-                    `**${track.name}** by **${track.artist}**`
-                )
-                .addFields(
-                    { name: 'Position in Queue', value: `${position}`, inline: true },
-                    { name: 'Duration', value: `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}`, inline: true },
-                    { name: 'Requested by', value: message.author.toString(), inline: true }
+            // Create selection buttons
+            const row = new ActionRowBuilder();
+            for (let i = 0; i < Math.min(tracks.length, 5); i++) {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`select_track_${i}`)
+                        .setLabel(`${i + 1}`)
+                        .setStyle(ButtonStyle.Secondary)
                 );
-                
-                if (track.image) {
-                    embed.setThumbnail(track.image);
-                }
-                
-                searchMessage.edit({ embeds: [embed] });
             }
+
+            const response = await message.channel.send({ embeds: [embed], components: [row] });
+
+            // Store tracks for selection with proper voice channel reference
+            if (!message.client.trackSelections) {
+                message.client.trackSelections = new Map();
+            }
+            
+            // Get voice channel again for storage
+            const member = message.member || await message.guild.members.fetch(message.author.id);
+            const userVoiceChannel = member.voice?.channel;
+            
+            message.client.trackSelections.set(response.id, {
+                tracks: tracks,
+                requesterId: message.author.id,
+                voiceChannel: userVoiceChannel,
+                expiresAt: Date.now() + 300000 // 5 minutes instead of 1
+            });
+
+            console.log(`Stored track selection for message ${response.id}, expires in 5 minutes`);
+
+            // Clean up after 5 minutes
+            setTimeout(() => {
+                if (message.client.trackSelections.has(response.id)) {
+                    message.client.trackSelections.delete(response.id);
+                    response.edit({ components: [] }).catch(() => {});
+                    console.log(`Cleaned up expired track selection ${response.id}`);
+                }
+            }, 300000);
 
         } catch (error) {
             console.error('Error in play command:', error);
-            const embed = createErrorEmbed('Error', 'An error occurred while trying to play the song.');
-            message.reply({ embeds: [embed] });
+            message.reply('There was an error searching for tracks. Please try again!');
         }
     },
 };

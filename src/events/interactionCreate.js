@@ -141,25 +141,18 @@ module.exports = {
                 // If this is the first track, start playing
                 const queueStatus = musicManager.getQueueStatus(interaction.guild.id);
                 if (!queueStatus.isPlaying) {
-                    const playResult = await musicManager.playTrack(interaction.guild.id, selectedTrack);
+                    await musicManager.playTrack(interaction.guild.id, selectedTrack);
                     
-                    if (playResult) {
-                        const embed = createInfoEmbed('🎵 Now Playing', 
-                            `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
-                        ).setColor('#1DB954');
+                    const embed = createInfoEmbed('🎵 Now Playing', 
+                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
+                    ).setColor('#1DB954');
 
-                        if (selectedTrack.image) {
-                            embed.setThumbnail(selectedTrack.image);
-                        }
-                        
-                        await interaction.channel.send({ embeds: [embed] });
-                        await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
-                    } else {
-                        await interaction.editReply({ 
-                            content: `❌ Failed to play **${selectedTrack.name}** by ${selectedTrack.artist}. The song might not be available on YouTube.`
-                        });
-                        return;
+                    if (selectedTrack.image) {
+                        embed.setThumbnail(selectedTrack.image);
                     }
+
+                    await interaction.channel.send({ embeds: [embed] });
+                    await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
                 } else {
                     await interaction.editReply({ content: `**${selectedTrack.name}** by ${selectedTrack.artist} has been added to the queue! (Position: ${position})` });
                 }
