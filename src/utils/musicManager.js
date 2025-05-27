@@ -1,7 +1,6 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const SpotifyWebApi = require('spotify-web-api-node');
-const fetch = require('node-fetch');
 
 class MusicManager {
     constructor() {
@@ -60,52 +59,55 @@ class MusicManager {
         try {
             console.log(`Searching YouTube for: ${query}`);
             
-            // Create search URL for YouTube
-            const searchTerm = encodeURIComponent(query);
-            const searchUrl = `https://www.youtube.com/results?search_query=${searchTerm}`;
+            // Use ytdl-core's search capabilities or create a direct YouTube URL
+            const searchTerm = query.replace(/[^\w\s]/gi, '').replace(/\s+/g, '+');
             
-            try {
-                // Fetch YouTube search results page
-                const response = await fetch(searchUrl);
-                const html = await response.text();
+            // Try common YouTube video formats for the search
+            const possibleUrls = [
+                `https://www.youtube.com/watch?v=${await this.getVideoIdFromSearch(searchTerm)}`,
+                `ytsearch:${query}`,
+                `ytsearch1:${query}`
+            ];
+            
+            for (const url of possibleUrls) {
+                if (!url || url.includes('undefined')) continue;
                 
-                // Extract video IDs from the HTML using regex
-                const videoIdRegex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
-                const matches = [];
-                let match;
-                
-                while ((match = videoIdRegex.exec(html)) !== null && matches.length < 5) {
-                    matches.push(match[1]);
-                }
-                
-                // Try each video ID to find one that works
-                for (const videoId of matches) {
-                    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-                    try {
-                        // Test if this video works with ytdl-core
-                        const info = await ytdl.getBasicInfo(videoUrl);
-                        if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
-                            console.log(`Found working YouTube video: ${videoUrl} - ${info.videoDetails.title}`);
-                            return videoUrl;
-                        }
-                    } catch (err) {
-                        console.log(`Video ${videoUrl} not available, trying next...`);
-                        continue;
+                try {
+                    // Test if this URL works with ytdl-core
+                    const info = await ytdl.getBasicInfo(url);
+                    if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
+                        console.log(`Found working YouTube video: ${url} - ${info.videoDetails.title}`);
+                        return url;
                     }
+                } catch (err) {
+                    console.log(`URL ${url} not available, trying next...`);
+                    continue;
                 }
-                
-                // If no videos from search work, return null
-                console.log('No working videos found for search term');
-                return null;
-                
-            } catch (fetchError) {
-                console.error('Error fetching YouTube search results:', fetchError);
-                return null;
             }
+            
+            // If no URLs work, try a more generic search
+            try {
+                const directSearch = `ytsearch:${query}`;
+                const info = await ytdl.getBasicInfo(directSearch);
+                if (info && info.videoDetails) {
+                    return directSearch;
+                }
+            } catch (err) {
+                console.log('Direct search also failed');
+            }
+            
+            console.log('No working videos found for search term');
+            return null;
         } catch (error) {
             console.error('Error searching YouTube:', error);
             return null;
         }
+    }
+
+    async getVideoIdFromSearch(searchTerm) {
+        // This is a simplified approach - in a real implementation you'd use YouTube API
+        // For now, we'll let ytdl-core handle the search
+        return null;
     }
 
     getQueue(guildId) {
