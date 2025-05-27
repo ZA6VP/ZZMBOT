@@ -1,6 +1,7 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const SpotifyWebApi = require('spotify-web-api-node');
+const fetch = require('node-fetch');
 
 class MusicManager {
     constructor() {
@@ -59,40 +60,48 @@ class MusicManager {
         try {
             console.log(`Searching YouTube for: ${query}`);
             
-            // Use a more reliable YouTube search approach
-            // We'll search for the track and try to find a working video
+            // Create search URL for YouTube
             const searchTerm = encodeURIComponent(query);
-            
-            // Try to find YouTube videos using a basic search approach
-            // Note: This requires proper YouTube API integration for production use
             const searchUrl = `https://www.youtube.com/results?search_query=${searchTerm}`;
             
-            // For now, we'll use ytdl-core with some common working video IDs
-            // In production, you'd want to implement proper YouTube API search
-            const commonMusicVideos = [
-                'https://www.youtube.com/watch?v=kJQP7kiw5Fk', // Despacito
-                'https://www.youtube.com/watch?v=9bZkp7q19f0', // Gangnam Style
-                'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', // Bohemian Rhapsody
-                'https://www.youtube.com/watch?v=JGwWNGJdvx8'  // Shape of You
-            ];
-            
-            // Try each video to see which one works with ytdl-core
-            for (const videoUrl of commonMusicVideos) {
-                try {
-                    // Test if this URL works with ytdl
-                    const info = await ytdl.getBasicInfo(videoUrl);
-                    if (info && info.videoDetails && info.formats) {
-                        console.log(`Found working YouTube video: ${videoUrl}`);
-                        return videoUrl;
-                    }
-                } catch (err) {
-                    console.log(`Video ${videoUrl} not available, trying next...`);
-                    continue;
+            try {
+                // Fetch YouTube search results page
+                const response = await fetch(searchUrl);
+                const html = await response.text();
+                
+                // Extract video IDs from the HTML using regex
+                const videoIdRegex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
+                const matches = [];
+                let match;
+                
+                while ((match = videoIdRegex.exec(html)) !== null && matches.length < 5) {
+                    matches.push(match[1]);
                 }
+                
+                // Try each video ID to find one that works
+                for (const videoId of matches) {
+                    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                    try {
+                        // Test if this video works with ytdl-core
+                        const info = await ytdl.getBasicInfo(videoUrl);
+                        if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
+                            console.log(`Found working YouTube video: ${videoUrl} - ${info.videoDetails.title}`);
+                            return videoUrl;
+                        }
+                    } catch (err) {
+                        console.log(`Video ${videoUrl} not available, trying next...`);
+                        continue;
+                    }
+                }
+                
+                // If no videos from search work, return null
+                console.log('No working videos found for search term');
+                return null;
+                
+            } catch (fetchError) {
+                console.error('Error fetching YouTube search results:', fetchError);
+                return null;
             }
-            
-            // If none work, return null so we can show an error
-            return null;
         } catch (error) {
             console.error('Error searching YouTube:', error);
             return null;
@@ -141,7 +150,10 @@ class MusicManager {
     async playTrack(guildId, track) {
         try {
             const connection = this.connections.get(guildId);
-            if (!connection) return false;
+            if (!connection) {
+                console.error('No voice connection found');
+                return false;
+            }
 
             let player = this.players.get(guildId);
             if (!player) {
@@ -150,6 +162,7 @@ class MusicManager {
                 connection.subscribe(player);
 
                 player.on(AudioPlayerStatus.Idle, () => {
+                    console.log('Track finished, playing next...');
                     this.playNext(guildId);
                 });
 
@@ -162,27 +175,62 @@ class MusicManager {
             console.log(`Attempting to play: ${track.name} by ${track.artist}`);
             
             // Search for the track on YouTube
-            const youtubeUrl = await this.searchYouTube(`${track.name} ${track.artist}`);
+            const youtubeUrl = await this.searchYouTube(`${track.name} ${track.artist} official`);
             
             if (!youtubeUrl) {
-                console.error('Could not find YouTube video for track');
+                console.error(`Could not find YouTube video for: ${track.name} by ${track.artist}`);
                 return false;
             }
             
             try {
+                // Validate the YouTube URL first
+                const info = await ytdl.getBasicInfo(youtubeUrl);
+                if (!info || !info.videoDetails || info.videoDetails.isLiveContent) {
+                    console.error('Invalid or live content video');
+                    return false;
+                }
+
+                console.log(`Creating audio stream for: ${info.videoDetails.title}`);
+                
                 const stream = ytdl(youtubeUrl, { 
                     filter: 'audioonly', 
                     quality: 'highestaudio',
-                    highWaterMark: 1 << 25
+                    highWaterMark: 1 << 25,
+                    requestOptions: {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    }
                 });
                 
-                const resource = createAudioResource(stream);
+                const resource = createAudioResource(stream, {
+                    inputType: 'arbitrary',
+                    inlineVolume: true
+                });
                 
                 player.play(resource);
-                console.log(`Started playing: ${track.name} by ${track.artist}`);
+                console.log(`Successfully started playing: ${track.name} by ${track.artist}`);
                 return true;
+                
             } catch (ytdlError) {
-                console.error('YTDL error:', ytdlError);
+                console.error('YTDL error:', ytdlError.message);
+                
+                // Try alternative search
+                const altUrl = await this.searchYouTube(`${track.artist} ${track.name} audio`);
+                if (altUrl && altUrl !== youtubeUrl) {
+                    try {
+                        const stream = ytdl(altUrl, { 
+                            filter: 'audioonly', 
+                            quality: 'highestaudio'
+                        });
+                        const resource = createAudioResource(stream);
+                        player.play(resource);
+                        console.log(`Started playing alternative version: ${track.name}`);
+                        return true;
+                    } catch (altError) {
+                        console.error('Alternative search also failed:', altError.message);
+                    }
+                }
                 return false;
             }
         } catch (error) {

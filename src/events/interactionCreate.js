@@ -141,14 +141,24 @@ module.exports = {
                 // If this is the first track, start playing
                 const queueStatus = musicManager.getQueueStatus(interaction.guild.id);
                 if (!queueStatus.isPlaying) {
-                    await musicManager.playTrack(interaction.guild.id, selectedTrack);
+                    const playResult = await musicManager.playTrack(interaction.guild.id, selectedTrack);
                     
-                    const embed = createInfoEmbed('🎵 Now Playing', 
-                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
-                    ).setColor('#1DB954');
+                    if (playResult) {
+                        const embed = createInfoEmbed('🎵 Now Playing', 
+                            `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
+                        ).setColor('#1DB954');
 
-                    if (selectedTrack.image) {
-                        embed.setThumbnail(selectedTrack.image);
+                        if (selectedTrack.image) {
+                            embed.setThumbnail(selectedTrack.image);
+                        }
+                        
+                        await interaction.editReply({ embeds: [embed] });
+                    } else {
+                        await interaction.editReply({ 
+                            content: `❌ Failed to play **${selectedTrack.name}** by ${selectedTrack.artist}. The song might not be available on YouTube.`
+                        });
+                        return;
+                    }
                     }
 
                     await interaction.channel.send({ embeds: [embed] });
