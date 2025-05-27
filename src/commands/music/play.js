@@ -12,17 +12,21 @@ module.exports = {
     },
     async execute(message, args) {
         // Check if user is in a voice channel
-        const member = message.guild.members.cache.get(message.author.id);
-        if (!member || !member.voice || !member.voice.channel) {
-            console.log(`Voice check failed for ${message.author.username}:`, {
-                memberExists: !!member,
-                hasVoice: !!(member && member.voice),
-                hasChannel: !!(member && member.voice && member.voice.channel)
-            });
+        const member = message.member;
+        const voiceState = member.voice;
+        
+        console.log('Voice state debug:', {
+            memberExists: !!member,
+            voiceState: !!voiceState,
+            channelId: voiceState?.channelId,
+            channel: !!voiceState?.channel
+        });
+        
+        if (!voiceState || !voiceState.channel) {
             return message.reply('You need to be in a voice channel to play music!');
         }
 
-        const voiceChannel = member.voice.channel;
+        const voiceChannel = voiceState.channel;
         console.log(`User ${message.author.username} is in voice channel: ${voiceChannel.name}`);
 
         // Check bot permissions in voice channel
