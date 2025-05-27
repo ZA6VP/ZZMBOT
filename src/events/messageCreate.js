@@ -2,7 +2,6 @@ const { Collection } = require('discord.js');
 const { createErrorEmbed, createInfoEmbed, createSuccessEmbed } = require('../utils/embedBuilder');
 const { addXP } = require('../utils/xpSystem');
 const AFK = require('../models/AFK');
-const AFK = require('../models/AFK');
 
 module.exports = {
     name: 'messageCreate',
