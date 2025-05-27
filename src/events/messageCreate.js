@@ -16,7 +16,7 @@ module.exports = {
         if (message.guild) {
             try {
                 // Check if user is AFK and remove AFK status
-                const afkRecord = await AFK.findOne({ userId: message.author.id, guildId: message.guild.id });
+                const afkRecord = await AFK.findOne({ userId: message.author.id, guildId: message.guild.id }).timeout(2000);
                 if (afkRecord) {
                     // Remove AFK status
                     await AFK.deleteOne({ userId: message.author.id, guildId: message.guild.id });
@@ -50,7 +50,7 @@ module.exports = {
                     for (const [userId, user] of message.mentions.users) {
                         if (userId === message.author.id) continue; // Skip self-mentions
 
-                        const mentionedUserAFK = await AFK.findOne({ userId, guildId: message.guild.id });
+                        const mentionedUserAFK = await AFK.findOne({ userId, guildId: message.guild.id }).timeout(2000);
                         if (mentionedUserAFK) {
                             // Add mention to AFK record
                             mentionedUserAFK.mentions.push({
@@ -92,6 +92,7 @@ module.exports = {
 
             if (!timestamps.has(cooldownKey) || (now - timestamps.get(cooldownKey)) >= cooldownAmount) {
                 const xpGain = Math.floor(Math.random() * (config.xp.messageXP.max - config.xp.messageXP.min + 1)) + config.xp.messageXP.min;
+                console.log(`Awarding ${xpGain} XP to ${message.author.username}`);
                 const result = await addXP(message.author.id, message.guild.id, xpGain);
 
                 if (result && result.leveledUp) {
