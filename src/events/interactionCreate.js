@@ -96,10 +96,10 @@ module.exports = {
             await interaction.deferReply({ ephemeral: true });
 
             const trackIndex = parseInt(interaction.customId.split('_')[2]);
-            
+
             console.log(`Track selection attempt: ${trackIndex}, message ID: ${interaction.message.id}`);
             console.log(`Available selections:`, interaction.client.trackSelections?.size || 0);
-            
+
             const selectionData = interaction.client.trackSelections?.get(interaction.message.id);
 
             if (!selectionData) {
@@ -127,7 +127,7 @@ module.exports = {
 
             try {
                 console.log(`User selected track: ${selectedTrack.name} by ${selectedTrack.artist}`);
-                
+
                 // Join voice channel if not already connected
                 let connection = musicManager.connections.get(interaction.guild.id);
                 if (!connection) {
@@ -142,12 +142,12 @@ module.exports = {
 
                 // Check if anything is currently playing
                 const queueStatus = musicManager.getQueueStatus(interaction.guild.id);
-                
+
                 if (!queueStatus.isPlaying && queueStatus.queueLength === 0) {
                     // Start playing immediately
                     console.log('Starting to play track immediately');
                     const success = await musicManager.playTrack(interaction.guild.id, selectedTrack);
-                    
+
                     if (success) {
                         const embed = createInfoEmbed('🎵 Now Playing', 
                             `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nFrom album: ${selectedTrack.album || 'Unknown'}`
@@ -166,9 +166,11 @@ module.exports = {
                 } else {
                     // Add to queue
                     const position = musicManager.addToQueue(interaction.guild.id, selectedTrack);
-                    
+
+                    const previewInfo = selectedTrack.preview_url ? '\n🎵 *Playing 30-second Spotify preview*' : '\n📺 *Playing from YouTube*';
+
                     const embed = createInfoEmbed('🎵 Added to Queue', 
-                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nPosition in queue: #${position}`
+                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nPosition in queue: #${position}${previewInfo}`
                     ).setColor('#1DB954');
 
                     if (selectedTrack.image) {
@@ -241,7 +243,7 @@ module.exports = {
 
                 // Create appropriate embed and button
                 let embed, buttonLabel;
-                
+
                 if (ticketType === 'report') {
                     embed = createInfoEmbed('User Report', 
                         'Send details related to your report below like:\n\n• User your reporting\n• Report reason\n• Proof of accusation'
@@ -306,7 +308,7 @@ module.exports = {
                         const fs = require('fs');
                         const transcriptFile = `transcript-${interaction.channel.name}-${Date.now()}.txt`;
                         fs.writeFileSync(transcriptFile, transcript);
-                        
+
                         await logsChannel.send({ 
                             content: 'Ticket transcript:',
                             files: [transcriptFile] 

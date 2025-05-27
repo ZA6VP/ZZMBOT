@@ -196,12 +196,42 @@ class MusicManager {
             console.log(`Attempting to play: ${track.name} by ${track.artist}`);
             this.currentTracks.set(guildId, track);
             
-            // Search for the track on YouTube
+            // First, try to use Spotify preview URL if available
+            if (track.preview_url) {
+                console.log(`Using Spotify preview URL: ${track.preview_url}`);
+                
+                try {
+                    const fetch = require('node-fetch');
+                    const response = await fetch(track.preview_url);
+                    
+                    if (response.ok) {
+                        const resource = createAudioResource(response.body, {
+                            inputType: 'arbitrary',
+                            inlineVolume: true
+                        });
+                        
+                        // Set volume to 50%
+                        if (resource.volume) {
+                            resource.volume.setVolume(0.5);
+                        }
+                        
+                        player.play(resource);
+                        console.log(`Successfully started playing Spotify preview: ${track.name} by ${track.artist}`);
+                        return true;
+                    }
+                } catch (spotifyError) {
+                    console.log('Spotify preview failed, falling back to YouTube:', spotifyError.message);
+                }
+            } else {
+                console.log('No Spotify preview available, searching YouTube as fallback');
+            }
+            
+            // Fallback to YouTube if Spotify preview not available or failed
             const searchQuery = `${track.name} ${track.artist}`;
             const youtubeUrl = await this.searchYouTube(searchQuery);
             
             if (!youtubeUrl) {
-                console.error('Could not find YouTube video for track');
+                console.error('Could not find YouTube video for track and no Spotify preview available');
                 return false;
             }
             
