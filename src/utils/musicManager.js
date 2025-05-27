@@ -66,7 +66,7 @@ class MusicManager {
             
             // Search for videos using youtube-sr
             const searchResults = await ytsr.search(query, {
-                limit: 5,
+                limit: 10,
                 type: 'video'
             });
             
@@ -75,22 +75,36 @@ class MusicManager {
                 return null;
             }
             
-            // Try each result to find a working one
-            for (const video of searchResults) {
+            // Filter out short videos and try each result
+            const filteredResults = searchResults.filter(video => 
+                video.duration && 
+                video.duration.seconds > 30 && 
+                video.duration.seconds < 600 // Between 30 seconds and 10 minutes
+            );
+            
+            const resultsToTry = filteredResults.length > 0 ? filteredResults : searchResults;
+            
+            for (const video of resultsToTry) {
                 try {
+                    console.log(`Checking video: ${video.title} (${video.duration?.text || 'unknown duration'})`);
+                    
                     // Validate the video URL with ytdl-core
                     const isValid = ytdl.validateURL(video.url);
                     if (isValid) {
-                        console.log(`Found working YouTube video: ${video.title} - ${video.url}`);
-                        return video.url;
+                        // Double check by getting basic info
+                        const info = await ytdl.getBasicInfo(video.url);
+                        if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
+                            console.log(`✅ Found working YouTube video: ${video.title} - ${video.url}`);
+                            return video.url;
+                        }
                     }
                 } catch (err) {
-                    console.log(`Video ${video.url} not valid, trying next...`);
+                    console.log(`❌ Video ${video.url} not valid:`, err.message);
                     continue;
                 }
             }
             
-            console.log('No valid YouTube videos found');
+            console.log('No valid YouTube videos found after checking all results');
             return null;
         } catch (error) {
             console.error('Error searching YouTube:', error);
@@ -194,16 +208,57 @@ class MusicManager {
             try {
                 console.log(`Creating audio stream from: ${youtubeUrl}`);
                 
-                const stream = ytdl(youtubeUrl, { 
-                    filter: 'audioonly',
-                    quality: 'highestaudio',
-                    highWaterMark: 1 << 25,
-                    requestOptions: {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        }
+                // Try different quality options if one fails
+                const qualityOptions = [
+                    { filter: 'audioonly', quality: 'highestaudio' },
+                    { filter: 'audioonly', quality: 'lowestaudio' },
+                    { filter: 'audio', quality: 'highestaudio' }
+                ];
+                
+                let stream = null;
+                let lastError = null;
+                
+                for (const options of qualityOptions) {
+                    try {
+                        console.log(`Trying audio extraction with options:`, options);
+                        
+                        stream = ytdl(youtubeUrl, {
+                            ...options,
+                            highWaterMark: 1 << 25,
+                            requestOptions: {
+                                headers: {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                                }
+                            }
+                        });
+                        
+                        // Test if stream works by waiting for first data
+                        await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => reject(new Error('Stream timeout')), 10000);
+                            stream.once('response', () => {
+                                clearTimeout(timeout);
+                                resolve();
+                            });
+                            stream.once('error', (err) => {
+                                clearTimeout(timeout);
+                                reject(err);
+                            });
+                        });
+                        
+                        console.log(`Successfully created stream with options:`, options);
+                        break;
+                        
+                    } catch (streamError) {
+                        console.log(`Failed with options ${JSON.stringify(options)}:`, streamError.message);
+                        lastError = streamError;
+                        stream = null;
                     }
-                });
+                }
+                
+                if (!stream) {
+                    console.error('All audio extraction methods failed. Last error:', lastError);
+                    return false;
+                }
                 
                 const resource = createAudioResource(stream, {
                     inputType: 'arbitrary',
@@ -218,6 +273,7 @@ class MusicManager {
                 player.play(resource);
                 console.log(`Successfully started playing: ${track.name} by ${track.artist}`);
                 return true;
+                
             } catch (ytdlError) {
                 console.error('YTDL error:', ytdlError);
                 return false;
