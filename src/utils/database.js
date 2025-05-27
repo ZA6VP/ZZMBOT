@@ -4,7 +4,16 @@ async function connectDatabase() {
     try {
         const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/pdw-bot';
         
-        await mongoose.connect(mongoUri);
+        await mongoose.connect(mongoUri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            bufferMaxEntries: 0,
+            maxPoolSize: 10,
+            minPoolSize: 5,
+            maxIdleTimeMS: 30000
+        });
         
         console.log('MongoDB connected successfully');
         return true;

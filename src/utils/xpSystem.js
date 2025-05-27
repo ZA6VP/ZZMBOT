@@ -2,16 +2,21 @@ const User = require('../models/User');
 
 async function addXP(userId, guildId, amount) {
     try {
-        let user = await User.findOne({ userId, guildId });
+        // Check if mongoose is connected
+        if (mongoose.connection.readyState !== 1) {
+            console.log('Database not connected, skipping XP gain');
+            return null;
+        }
+
+        let user = await User.findOne({ userId, guildId }).timeout(5000);
         
         if (!user) {
-            user = new User({ userId, guildId, xp: amount, level: 0 });
+            user = new User({ userId, guildId, xp: amount, level: 0, totalMessages: 1, lastXPGain: new Date() });
         } else {
             user.xp += amount;
+            user.totalMessages += 1;
+            user.lastXPGain = new Date();
         }
-        
-        user.totalMessages += 1;
-        user.lastXPGain = new Date();
         
         // Calculate new level with exponential scaling
         const newLevel = calculateLevelFromXP(user.xp);
@@ -29,25 +34,52 @@ async function addXP(userId, guildId, amount) {
 
 async function getUser(userId, guildId) {
     try {
-        let user = await User.findOne({ userId, guildId });
+        // Check if mongoose is connected
+        if (mongoose.connection.readyState !== 1) {
+            console.log('Database not connected, returning default user data');
+            return {
+                userId,
+                guildId,
+                xp: 0,
+                level: 0,
+                totalMessages: 0,
+                lastXPGain: new Date()
+            };
+        }
+
+        let user = await User.findOne({ userId, guildId }).timeout(5000);
         
         if (!user) {
-            user = new User({ userId, guildId });
+            user = new User({ userId, guildId, xp: 0, level: 0, totalMessages: 0, lastXPGain: new Date() });
             await user.save();
         }
         
         return user;
     } catch (error) {
         console.error('Error getting user:', error);
-        return null;
+        return {
+            userId,
+            guildId,
+            xp: 0,
+            level: 0,
+            totalMessages: 0,
+            lastXPGain: new Date()
+        };
     }
 }
 
 async function getLeaderboard(guildId, limit = 10) {
     try {
+        // Check if mongoose is connected
+        if (mongoose.connection.readyState !== 1) {
+            console.log('Database not connected, returning empty leaderboard');
+            return [];
+        }
+
         return await User.find({ guildId })
             .sort({ xp: -1 })
-            .limit(limit);
+            .limit(limit)
+            .timeout(5000);
     } catch (error) {
         console.error('Error getting leaderboard:', error);
         return [];

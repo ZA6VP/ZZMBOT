@@ -18,9 +18,10 @@ const client = new Client({
     ]
 });
 
-// Collections for commands and cooldowns
+// Initialize collections
 client.commands = new Collection();
 client.cooldowns = new Collection();
+client.giveaways = new Map();
 
 // Load configuration
 try {
@@ -40,7 +41,7 @@ const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     const event = require(filePath);
-    
+
     if (event.once) {
         client.once(event.name, (...args) => event.execute(...args));
     } else {
@@ -68,7 +69,7 @@ async function startBot() {
         } else {
             console.log('Continuing without database - some features may be limited');
         }
-        
+
         // Connect to Discord (critical)
         await client.login(process.env.DISCORD_TOKEN);
         console.log('Bot logged in successfully and is now online!');

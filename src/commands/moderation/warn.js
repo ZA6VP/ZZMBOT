@@ -34,22 +34,34 @@ module.exports = {
         const reason = args.slice(1).join(' ') || 'No reason provided';
 
         try {
-            // Log the infraction
-            const infraction = new Infraction({
-                userId: target.user.id,
-                guildId: message.guild.id,
-                moderatorId: message.author.id,
-                type: 'warn',
-                reason: reason
-            });
-            await infraction.save();
+            let totalWarnings = 1;
+            
+            // Try to log the infraction if database is available
+            if (require('mongoose').connection.readyState === 1) {
+                try {
+                    const infraction = new Infraction({
+                        userId: target.user.id,
+                        guildId: message.guild.id,
+                        moderatorId: message.author.id,
+                        type: 'warn',
+                        reason: reason
+                    });
+                    await infraction.save();
 
-            // Get total warnings for this user
-            const totalWarnings = await Infraction.countDocuments({
-                userId: target.user.id,
-                guildId: message.guild.id,
-                type: 'warn'
-            });
+                    // Get total warnings for this user
+                    totalWarnings = await Infraction.countDocuments({
+                        userId: target.user.id,
+                        guildId: message.guild.id,
+                        type: 'warn'
+                    });
+                } catch (dbError) {
+                    console.error('Database error in warn command:', dbError);
+                    totalWarnings = 'Unknown';
+                }
+            } else {
+                console.log('Database not connected, warning not logged to database');
+                totalWarnings = 'Unknown';
+            }
 
             // Send DM to user
             try {

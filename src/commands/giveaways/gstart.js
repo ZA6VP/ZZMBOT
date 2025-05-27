@@ -1,4 +1,5 @@
-const { PermissionFlagsBits } = require('discord.js');
+
+const { PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { hasPermission, hasRole } = require('../../utils/permissionChecks');
 const { createInfoEmbed, createErrorEmbed, createSuccessEmbed } = require('../../utils/embedBuilder');
 const Giveaway = require('../../models/Giveaway');
@@ -75,19 +76,50 @@ module.exports = {
             
             // Create giveaway embed
             const giveawayEmbed = createInfoEmbed('🎉 GIVEAWAY 🎉', 
-                `**Prize:** ${prize}\n**Winners:** ${winnersCount}\n**Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n**Hosted by:** ${message.author}`
+                `**Prize:** ${prize}\n**Winners:** ${winnersCount}\n**Ends:** <t:${Math.floor(endTime.getTime() / 1000)}:R>\n**Hosted by:** ${message.author}\n**Participants:** 0`
             )
             .setColor('#FFD700')
-            .setFooter({ text: `React with ${config.giveaway.reactionEmoji} to enter!` });
+            .setFooter({ text: 'Click the button below to enter!' });
+
+            // Create button
+            const enterButton = new ButtonBuilder()
+                .setCustomId('giveaway_enter')
+                .setLabel('🎉 Enter Giveaway')
+                .setStyle(ButtonStyle.Primary);
+
+            const row = new ActionRowBuilder()
+                .addComponents(enterButton);
 
             // Send giveaway message
-            const giveawayMessage = await message.channel.send({ embeds: [giveawayEmbed] });
-            
-            // Add reaction
-            await giveawayMessage.react(config.giveaway.reactionEmoji);
+            const giveawayMessage = await message.channel.send({ 
+                embeds: [giveawayEmbed], 
+                components: [row] 
+            });
 
-            // Save to database
-            const giveaway = new Giveaway({
+            // Save to database if available
+            try {
+                if (require('mongoose').connection.readyState === 1) {
+                    const giveaway = new Giveaway({
+                        messageId: giveawayMessage.id,
+                        channelId: message.channel.id,
+                        guildId: message.guild.id,
+                        hostId: message.author.id,
+                        prize: prize,
+                        winners: winnersCount,
+                        endTime: endTime,
+                        participants: [],
+                        winnersList: [],
+                        active: true
+                    });
+                    await giveaway.save();
+                }
+            } catch (dbError) {
+                console.error('Database error saving giveaway:', dbError);
+            }
+
+            // Store giveaway data in client cache as fallback
+            if (!message.client.giveaways) message.client.giveaways = new Map();
+            message.client.giveaways.set(giveawayMessage.id, {
                 messageId: giveawayMessage.id,
                 channelId: message.channel.id,
                 guildId: message.guild.id,
@@ -99,7 +131,6 @@ module.exports = {
                 winnersList: [],
                 active: true
             });
-            await giveaway.save();
 
             // Confirm to host
             const confirmEmbed = createSuccessEmbed('Giveaway Started', 
@@ -110,7 +141,22 @@ module.exports = {
             // Auto-end giveaway when time expires
             setTimeout(async () => {
                 try {
-                    const giveawayData = await Giveaway.findOne({ messageId: giveawayMessage.id, active: true });
+                    let giveawayData;
+                    
+                    // Try to get from database first
+                    try {
+                        if (require('mongoose').connection.readyState === 1) {
+                            giveawayData = await Giveaway.findOne({ messageId: giveawayMessage.id, active: true });
+                        }
+                    } catch (dbError) {
+                        console.error('Database error fetching giveaway:', dbError);
+                    }
+                    
+                    // Fallback to client cache
+                    if (!giveawayData) {
+                        giveawayData = message.client.giveaways?.get(giveawayMessage.id);
+                    }
+
                     if (giveawayData && giveawayData.participants.length > 0) {
                         // Pick random winners
                         const winners = [];
@@ -122,10 +168,23 @@ module.exports = {
                             participants.splice(randomIndex, 1);
                         }
 
-                        // Update database
-                        giveawayData.winnersList = winners;
-                        giveawayData.active = false;
-                        await giveawayData.save();
+                        // Update database if available
+                        try {
+                            if (require('mongoose').connection.readyState === 1 && giveawayData.save) {
+                                giveawayData.winnersList = winners;
+                                giveawayData.active = false;
+                                await giveawayData.save();
+                            }
+                        } catch (dbError) {
+                            console.error('Database error updating giveaway:', dbError);
+                        }
+
+                        // Update client cache
+                        if (message.client.giveaways?.has(giveawayMessage.id)) {
+                            const cachedData = message.client.giveaways.get(giveawayMessage.id);
+                            cachedData.winnersList = winners;
+                            cachedData.active = false;
+                        }
 
                         // Update embed
                         const endedEmbed = createInfoEmbed('🎉 GIVEAWAY ENDED 🎉', 
@@ -134,7 +193,17 @@ module.exports = {
                         .setColor('#FF0000')
                         .setFooter({ text: 'This giveaway has ended!' });
 
-                        await giveawayMessage.edit({ embeds: [endedEmbed] });
+                        // Disable button
+                        const disabledButton = new ButtonBuilder()
+                            .setCustomId('giveaway_ended')
+                            .setLabel('🎉 Giveaway Ended')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true);
+
+                        const disabledRow = new ActionRowBuilder()
+                            .addComponents(disabledButton);
+
+                        await giveawayMessage.edit({ embeds: [endedEmbed], components: [disabledRow] });
 
                         // Announce winners
                         const winnersText = winners.map(id => `<@${id}>`).join(', ');
@@ -150,10 +219,32 @@ module.exports = {
                         .setColor('#FF0000')
                         .setFooter({ text: 'This giveaway has ended!' });
 
-                        await giveawayMessage.edit({ embeds: [noWinnersEmbed] });
+                        // Disable button
+                        const disabledButton = new ButtonBuilder()
+                            .setCustomId('giveaway_ended')
+                            .setLabel('🎉 Giveaway Ended')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true);
+
+                        const disabledRow = new ActionRowBuilder()
+                            .addComponents(disabledButton);
+
+                        await giveawayMessage.edit({ embeds: [noWinnersEmbed], components: [disabledRow] });
                         await message.channel.send('😢 No one participated in the giveaway!');
                         
-                        await Giveaway.updateOne({ messageId: giveawayMessage.id }, { active: false });
+                        // Update database if available
+                        try {
+                            if (require('mongoose').connection.readyState === 1) {
+                                await Giveaway.updateOne({ messageId: giveawayMessage.id }, { active: false });
+                            }
+                        } catch (dbError) {
+                            console.error('Database error updating giveaway:', dbError);
+                        }
+
+                        // Update client cache
+                        if (message.client.giveaways?.has(giveawayMessage.id)) {
+                            message.client.giveaways.get(giveawayMessage.id).active = false;
+                        }
                     }
                 } catch (error) {
                     console.error('Error ending giveaway:', error);

@@ -2,19 +2,100 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFla
 const { createInfoEmbed, createErrorEmbed } = require('../utils/embedBuilder');
 const musicManager = require('../utils/musicManager');
 const fs = require('fs');
+const Giveaway = require('../models/Giveaway');
 
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
-        if (!interaction.isButton()) return;
+        // Handle button interactions
+        if (interaction.isButton()) {
+            if (interaction.customId === 'giveaway_enter') {
+                try {
+                    let giveawayData;
 
-        const { customId, user, guild, channel } = interaction;
+                    // Try to get from database first
+                    try {
+                        if (require('mongoose').connection.readyState === 1) {
+                            giveawayData = await Giveaway.findOne({ 
+                                messageId: interaction.message.id, 
+                                active: true 
+                            });
+                        }
+                    } catch (dbError) {
+                        console.error('Database error fetching giveaway:', dbError);
+                    }
+
+                    // Fallback to client cache
+                    if (!giveawayData) {
+                        giveawayData = interaction.client.giveaways?.get(interaction.message.id);
+                    }
+
+                    if (!giveawayData || !giveawayData.active) {
+                        return interaction.reply({ 
+                            content: '❌ This giveaway is no longer active!', 
+                            ephemeral: true 
+                        });
+                    }
+
+                    // Check if user already entered
+                    if (giveawayData.participants.includes(interaction.user.id)) {
+                        return interaction.reply({ 
+                            content: '❌ You have already entered this giveaway!', 
+                            ephemeral: true 
+                        });
+                    }
+
+                    // Add user to participants
+                    giveawayData.participants.push(interaction.user.id);
+
+                    // Update database if available
+                    try {
+                        if (require('mongoose').connection.readyState === 1 && giveawayData.save) {
+                            await giveawayData.save();
+                        }
+                    } catch (dbError) {
+                        console.error('Database error saving giveaway participant:', dbError);
+                    }
+
+                    // Update client cache
+                    if (interaction.client.giveaways?.has(interaction.message.id)) {
+                        interaction.client.giveaways.get(interaction.message.id).participants = giveawayData.participants;
+                    }
+
+                    // Update embed with new participant count
+                    const currentEmbed = interaction.message.embeds[0];
+                    const updatedEmbed = createInfoEmbed('🎉 GIVEAWAY 🎉',
+                        currentEmbed.description.replace(
+                            /\*\*Participants:\*\* \d+/,
+                            `**Participants:** ${giveawayData.participants.length}`
+                        )
+                    )
+                    .setColor('#FFD700')
+                    .setFooter({ text: 'Click the button below to enter!' });
+
+                    await interaction.update({ embeds: [updatedEmbed] });
+
+                    // Send confirmation
+                    await interaction.followUp({ 
+                        content: '✅ You have successfully entered the giveaway! Good luck!', 
+                        ephemeral: true 
+                    });
+
+                } catch (error) {
+                    console.error('Error handling giveaway entry:', error);
+                    await interaction.reply({ 
+                        content: '❌ An error occurred while entering the giveaway.', 
+                        ephemeral: true 
+                    });
+                }
+            }
+        }
 
         // Handle track selection
-        if (customId.startsWith('select_track_')) {
+        if (interaction.isButton() && interaction.customId.startsWith('select_track_')) {
             await interaction.deferReply({ ephemeral: true });
 
-            const trackIndex = parseInt(customId.split('_')[2]);
+            const trackIndex = parseInt(interaction.customId.split('_')[2]);
             
             console.log(`Track selection attempt: ${trackIndex}, message ID: ${interaction.message.id}`);
             console.log(`Available selections:`, interaction.client.trackSelections?.size || 0);
@@ -35,7 +116,7 @@ module.exports = {
                 return interaction.editReply({ content: 'This track selection has expired! Please search again.' });
             }
 
-            if (selectionData.requesterId !== user.id) {
+            if (selectionData.requesterId !== interaction.user.id) {
                 return interaction.editReply({ content: 'Only the person who requested the search can select a track!' });
             }
 
@@ -46,7 +127,7 @@ module.exports = {
 
             try {
                 // Join voice channel if not already connected
-                let connection = musicManager.connections.get(guild.id);
+                let connection = musicManager.connections.get(interaction.guild.id);
                 if (!connection) {
                     connection = await musicManager.joinChannel(selectionData.voiceChannel);
                     if (!connection) {
@@ -55,12 +136,12 @@ module.exports = {
                 }
 
                 // Add to queue
-                const position = musicManager.addToQueue(guild.id, selectedTrack);
+                const position = musicManager.addToQueue(interaction.guild.id, selectedTrack);
                 
                 // If this is the first track, start playing
-                const queueStatus = musicManager.getQueueStatus(guild.id);
+                const queueStatus = musicManager.getQueueStatus(interaction.guild.id);
                 if (!queueStatus.isPlaying) {
-                    await musicManager.playTrack(guild.id, selectedTrack);
+                    await musicManager.playTrack(interaction.guild.id, selectedTrack);
                     
                     const embed = createInfoEmbed('🎵 Now Playing', 
                         `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
@@ -70,7 +151,7 @@ module.exports = {
                         embed.setThumbnail(selectedTrack.image);
                     }
 
-                    await channel.send({ embeds: [embed] });
+                    await interaction.channel.send({ embeds: [embed] });
                     await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
                 } else {
                     await interaction.editReply({ content: `**${selectedTrack.name}** by ${selectedTrack.artist} has been added to the queue! (Position: ${position})` });
@@ -88,12 +169,12 @@ module.exports = {
         }
 
         // Handle ticket creation
-        if (customId === 'report_ticket' || customId === 'feedback_ticket') {
+        if (interaction.isButton() && (interaction.customId === 'report_ticket' || interaction.customId === 'feedback_ticket')) {
             await interaction.deferReply({ ephemeral: true });
 
             try {
                 // Find the category where the ticket channel is located
-                const ticketChannel = guild.channels.cache.get('1374528951527149659');
+                const ticketChannel = interaction.guild.channels.cache.get('1374528951527149659');
                 const category = ticketChannel?.parent;
 
                 if (!category) {
@@ -102,28 +183,28 @@ module.exports = {
 
                 // Generate ticket number
                 const ticketNumber = Math.floor(Math.random() * 10000);
-                const ticketType = customId === 'report_ticket' ? 'report' : 'feedback';
+                const ticketType = interaction.customId === 'report_ticket' ? 'report' : 'feedback';
                 const channelName = `${ticketType}-ticket-${ticketNumber}`;
 
                 // Create ticket channel
-                const ticketChannelCreated = await guild.channels.create({
+                const ticketChannelCreated = await interaction.guild.channels.create({
                     name: channelName,
                     type: ChannelType.GuildText,
                     parent: category.id,
                     permissionOverwrites: [
                         {
-                            id: guild.roles.everyone.id,
+                            id: interaction.guild.roles.everyone.id,
                             deny: [PermissionFlagsBits.ViewChannel],
                         },
                         {
-                            id: user.id,
+                            id: interaction.user.id,
                             allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                         },
                     ],
                 });
 
                 // Add permissions for roles with "Manage Channels" and "Timeout Users"
-                const staffRoles = guild.roles.cache.filter(role => 
+                const staffRoles = interaction.guild.roles.cache.filter(role => 
                     role.permissions.has(PermissionFlagsBits.ManageChannels) || 
                     role.permissions.has(PermissionFlagsBits.ModerateMembers)
                 );
@@ -160,7 +241,7 @@ module.exports = {
                     );
 
                 await ticketChannelCreated.send({ 
-                    content: `<@${user.id}>`,
+                    content: `<@${interaction.user.id}>`,
                     embeds: [embed], 
                     components: [closeButton] 
                 });
@@ -176,24 +257,24 @@ module.exports = {
         }
 
         // Handle ticket closing
-        if (customId.startsWith('close_ticket_')) {
+        if (interaction.isButton() && interaction.customId.startsWith('close_ticket_')) {
             await interaction.deferReply();
 
             try {
                 // Get all messages in the channel for transcript
-                const messages = await channel.messages.fetch({ limit: 100 });
+                const messages = await interaction.channel.messages.fetch({ limit: 100 });
                 const transcript = messages.reverse().map(msg => 
                     `[${msg.createdAt.toLocaleString()}] ${msg.author.tag}: ${msg.content}`
                 ).join('\n');
 
                 // Send transcript to logs channel
                 const logsChannelId = '1374516222166569080';
-                const logsChannel = guild.channels.cache.get(logsChannelId);
+                const logsChannel = interaction.guild.channels.cache.get(logsChannelId);
 
                 if (logsChannel) {
                     const transcriptEmbed = createInfoEmbed(
-                        `Ticket Closed - ${channel.name}`,
-                        `Closed by: ${user.tag}\nChannel: ${channel.name}\nClosed at: ${new Date().toLocaleString()}`
+                        `Ticket Closed - ${interaction.channel.name}`,
+                        `Closed by: ${interaction.user.tag}\nChannel: ${interaction.channel.name}\nClosed at: ${new Date().toLocaleString()}`
                     ).setColor('#ff0000');
 
                     await logsChannel.send({ embeds: [transcriptEmbed] });
@@ -201,7 +282,7 @@ module.exports = {
                     // Send transcript as file if there are messages
                     if (transcript.length > 0) {
                         const fs = require('fs');
-                        const transcriptFile = `transcript-${channel.name}-${Date.now()}.txt`;
+                        const transcriptFile = `transcript-${interaction.channel.name}-${Date.now()}.txt`;
                         fs.writeFileSync(transcriptFile, transcript);
                         
                         await logsChannel.send({ 
@@ -218,12 +299,33 @@ module.exports = {
 
                 // Delete the channel after a short delay
                 setTimeout(async () => {
-                    await channel.delete();
+                    await interaction.channel.delete();
                 }, 3000);
 
             } catch (error) {
                 console.error('Error closing ticket:', error);
                 await interaction.editReply({ content: 'There was an error closing the ticket!' });
+            }
+        }
+
+        // Handle slash commands if needed
+        if (interaction.isChatInputCommand()) {
+            const command = interaction.client.commands.get(interaction.commandName);
+
+            if (!command) {
+                console.error(`No command matching ${interaction.commandName} was found.`);
+                return;
+            }
+
+            try {
+                await command.execute(interaction);
+            } catch (error) {
+                console.error(error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+                } else {
+                    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+                }
             }
         }
     },
