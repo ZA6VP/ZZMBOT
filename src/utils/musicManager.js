@@ -4,16 +4,16 @@ const SpotifyWebApi = require('spotify-web-api-node');
 
 class MusicManager {
     constructor() {
-        this.queues = new Map(); // Guild ID -> Queue
-        this.players = new Map(); // Guild ID -> Audio Player
-        this.connections = new Map(); // Guild ID -> Voice Connection
-        
+        this.connections = new Map();
+        this.players = new Map();
+        this.queues = new Map();
+
         // Initialize Spotify API
         this.spotifyApi = new SpotifyWebApi({
             clientId: process.env.SPOTIFY_CLIENT_ID,
-            clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET
         });
-        
+
         this.initializeSpotify();
     }
 
@@ -21,8 +21,7 @@ class MusicManager {
         try {
             const data = await this.spotifyApi.clientCredentialsGrant();
             this.spotifyApi.setAccessToken(data.body['access_token']);
-            console.log('Spotify API initialized successfully');
-            
+
             // Refresh token every hour
             setInterval(async () => {
                 try {
@@ -37,111 +36,22 @@ class MusicManager {
         }
     }
 
-    async searchSpotify(query, limit = 5) {
-        try {
-            const results = await this.spotifyApi.searchTracks(query, { limit });
-            return results.body.tracks.items.map(track => ({
-                name: track.name,
-                artist: track.artists[0].name,
-                duration: Math.floor(track.duration_ms / 1000),
-                url: track.external_urls.spotify,
-                preview_url: track.preview_url,
-                id: track.id,
-                image: track.album.images[0]?.url
-            }));
-        } catch (error) {
-            console.error('Error searching Spotify:', error);
-            return [];
-        }
-    }
-
-    async searchYouTube(query) {
-        try {
-            console.log(`Searching YouTube for: ${query}`);
-            
-            // Use ytdl-core's search capabilities or create a direct YouTube URL
-            const searchTerm = query.replace(/[^\w\s]/gi, '').replace(/\s+/g, '+');
-            
-            // Try common YouTube video formats for the search
-            const possibleUrls = [
-                `https://www.youtube.com/watch?v=${await this.getVideoIdFromSearch(searchTerm)}`,
-                `ytsearch:${query}`,
-                `ytsearch1:${query}`
-            ];
-            
-            for (const url of possibleUrls) {
-                if (!url || url.includes('undefined')) continue;
-                
-                try {
-                    // Test if this URL works with ytdl-core
-                    const info = await ytdl.getBasicInfo(url);
-                    if (info && info.videoDetails && !info.videoDetails.isLiveContent) {
-                        console.log(`Found working YouTube video: ${url} - ${info.videoDetails.title}`);
-                        return url;
-                    }
-                } catch (err) {
-                    console.log(`URL ${url} not available, trying next...`);
-                    continue;
-                }
-            }
-            
-            // If no URLs work, try a more generic search
-            try {
-                const directSearch = `ytsearch:${query}`;
-                const info = await ytdl.getBasicInfo(directSearch);
-                if (info && info.videoDetails) {
-                    return directSearch;
-                }
-            } catch (err) {
-                console.log('Direct search also failed');
-            }
-            
-            console.log('No working videos found for search term');
-            return null;
-        } catch (error) {
-            console.error('Error searching YouTube:', error);
-            return null;
-        }
-    }
-
-    async getVideoIdFromSearch(searchTerm) {
-        // This is a simplified approach - in a real implementation you'd use YouTube API
-        // For now, we'll let ytdl-core handle the search
-        return null;
-    }
-
-    getQueue(guildId) {
-        if (!this.queues.has(guildId)) {
-            this.queues.set(guildId, []);
-        }
-        return this.queues.get(guildId);
-    }
-
-    addToQueue(guildId, track) {
-        const queue = this.getQueue(guildId);
-        queue.push(track);
-        return queue.length;
-    }
-
-    async joinChannel(channel) {
+    async joinChannel(voiceChannel) {
         try {
             const connection = joinVoiceChannel({
-                channelId: channel.id,
-                guildId: channel.guild.id,
-                adapterCreator: channel.guild.voiceAdapterCreator,
-                selfDeaf: false,
-                selfMute: false,
+                channelId: voiceChannel.id,
+                guildId: voiceChannel.guild.id,
+                adapterCreator: voiceChannel.guild.voiceAdapterCreator,
             });
 
-            connection.on(VoiceConnectionStatus.Ready, () => {
-                console.log('Voice connection is ready!');
-            });
+            this.connections.set(voiceChannel.guild.id, connection);
 
             connection.on(VoiceConnectionStatus.Disconnected, () => {
-                console.log('Voice connection disconnected');
+                this.connections.delete(voiceChannel.guild.id);
+                this.players.delete(voiceChannel.guild.id);
+                this.queues.delete(voiceChannel.guild.id);
             });
 
-            this.connections.set(channel.guild.id, connection);
             return connection;
         } catch (error) {
             console.error('Error joining voice channel:', error);
@@ -149,112 +59,129 @@ class MusicManager {
         }
     }
 
+    async searchSpotify(query) {
+        try {
+            const results = await this.spotifyApi.searchTracks(query, { limit: 5 });
+            return results.body.tracks.items.map(track => ({
+                name: track.name,
+                artist: track.artists[0].name,
+                duration: track.duration_ms,
+                image: track.album.images[0]?.url,
+                spotifyId: track.id,
+                uri: track.uri
+            }));
+        } catch (error) {
+            console.error('Error searching Spotify:', error);
+            return [];
+        }
+    }
+
+    async getYouTubeUrl(trackName, artistName) {
+        try {
+            const searchQuery = `${trackName} ${artistName}`;
+            // This is a simple implementation - you might want to use youtube-search-api for better results
+            const searchUrl = `ytsearch:${searchQuery}`;
+            return searchUrl;
+        } catch (error) {
+            console.error('Error getting YouTube URL:', error);
+            return null;
+        }
+    }
+
     async playTrack(guildId, track) {
         try {
             const connection = this.connections.get(guildId);
-            if (!connection) {
-                console.error('No voice connection found');
-                return false;
-            }
+            if (!connection) return false;
 
-            let player = this.players.get(guildId);
-            if (!player) {
-                player = createAudioPlayer();
-                this.players.set(guildId, player);
-                connection.subscribe(player);
+            // Try to get YouTube stream
+            const searchQuery = `${track.name} ${track.artist}`;
+            const youtubeUrl = await this.findYouTubeVideo(searchQuery);
 
-                player.on(AudioPlayerStatus.Idle, () => {
-                    console.log('Track finished, playing next...');
-                    this.playNext(guildId);
-                });
-
-                player.on('error', error => {
-                    console.error('Audio player error:', error);
-                    this.playNext(guildId);
-                });
-            }
-
-            console.log(`Attempting to play: ${track.name} by ${track.artist}`);
-            
-            // Search for the track on YouTube
-            const youtubeUrl = await this.searchYouTube(`${track.name} ${track.artist} official`);
-            
             if (!youtubeUrl) {
-                console.error(`Could not find YouTube video for: ${track.name} by ${track.artist}`);
+                console.error('Could not find YouTube video for:', searchQuery);
                 return false;
             }
-            
-            try {
-                // Validate the YouTube URL first
-                const info = await ytdl.getBasicInfo(youtubeUrl);
-                if (!info || !info.videoDetails || info.videoDetails.isLiveContent) {
-                    console.error('Invalid or live content video');
-                    return false;
-                }
 
-                console.log(`Creating audio stream for: ${info.videoDetails.title}`);
-                
-                const stream = ytdl(youtubeUrl, { 
-                    filter: 'audioonly', 
-                    quality: 'highestaudio',
-                    highWaterMark: 1 << 25,
-                    requestOptions: {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        }
-                    }
-                });
-                
-                const resource = createAudioResource(stream, {
-                    inputType: 'arbitrary',
-                    inlineVolume: true
-                });
-                
-                player.play(resource);
-                console.log(`Successfully started playing: ${track.name} by ${track.artist}`);
-                return true;
-                
-            } catch (ytdlError) {
-                console.error('YTDL error:', ytdlError.message);
-                
-                // Try alternative search
-                const altUrl = await this.searchYouTube(`${track.artist} ${track.name} audio`);
-                if (altUrl && altUrl !== youtubeUrl) {
-                    try {
-                        const stream = ytdl(altUrl, { 
-                            filter: 'audioonly', 
-                            quality: 'highestaudio'
-                        });
-                        const resource = createAudioResource(stream);
-                        player.play(resource);
-                        console.log(`Started playing alternative version: ${track.name}`);
-                        return true;
-                    } catch (altError) {
-                        console.error('Alternative search also failed:', altError.message);
-                    }
-                }
-                return false;
-            }
+            const stream = ytdl(youtubeUrl, {
+                filter: 'audioonly',
+                quality: 'highestaudio',
+                highWaterMark: 1 << 25
+            });
+
+            const resource = createAudioResource(stream);
+            const player = createAudioPlayer();
+
+            player.play(resource);
+            connection.subscribe(player);
+
+            this.players.set(guildId, player);
+
+            player.on(AudioPlayerStatus.Idle, () => {
+                this.playNext(guildId);
+            });
+
+            player.on('error', error => {
+                console.error('Audio player error:', error);
+                this.playNext(guildId);
+            });
+
+            return true;
         } catch (error) {
             console.error('Error playing track:', error);
             return false;
         }
     }
 
+    async findYouTubeVideo(query) {
+        try {
+            // Simple YouTube search - in production you'd want to use YouTube Data API
+            const results = await ytdl.getInfo(`ytsearch:${query}`);
+            return results.videoDetails.video_url;
+        } catch (error) {
+            // Fallback method
+            try {
+                const searchResults = await ytdl.getInfo(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
+                return searchResults.videoDetails.video_url;
+            } catch (fallbackError) {
+                console.error('YouTube search failed:', fallbackError);
+                return null;
+            }
+        }
+    }
+
+    addToQueue(guildId, track) {
+        if (!this.queues.has(guildId)) {
+            this.queues.set(guildId, []);
+        }
+
+        const queue = this.queues.get(guildId);
+        queue.push(track);
+        return queue.length;
+    }
+
+    getQueue(guildId) {
+        return this.queues.get(guildId) || [];
+    }
+
+    getQueueStatus(guildId) {
+        const player = this.players.get(guildId);
+        const queue = this.queues.get(guildId) || [];
+
+        return {
+            isPlaying: player && player.state.status === AudioPlayerStatus.Playing,
+            queue: queue,
+            queueLength: queue.length
+        };
+    }
+
     async playNext(guildId) {
-        const queue = this.getQueue(guildId);
-        if (queue.length === 0) {
-            // No more tracks, disconnect after 5 minutes of inactivity
-            setTimeout(() => {
-                if (this.getQueue(guildId).length === 0) {
-                    this.disconnect(guildId);
-                }
-            }, 300000);
-            return;
+        const queue = this.queues.get(guildId);
+        if (!queue || queue.length === 0) {
+            return false;
         }
 
         const nextTrack = queue.shift();
-        await this.playTrack(guildId, nextTrack);
+        return await this.playTrack(guildId, nextTrack);
     }
 
     skip(guildId) {
@@ -266,38 +193,23 @@ class MusicManager {
         return false;
     }
 
-    disconnect(guildId) {
-        const connection = this.connections.get(guildId);
+    stop(guildId) {
         const player = this.players.get(guildId);
+        const connection = this.connections.get(guildId);
 
         if (player) {
             player.stop();
-            this.players.delete(guildId);
         }
 
         if (connection) {
             connection.destroy();
-            this.connections.delete(guildId);
         }
 
-        this.queues.set(guildId, []);
-    }
+        this.players.delete(guildId);
+        this.connections.delete(guildId);
+        this.queues.delete(guildId);
 
-    getCurrentTrack(guildId) {
-        // This would need to be implemented to track current playing track
-        return null;
-    }
-
-    getQueueStatus(guildId) {
-        const queue = this.getQueue(guildId);
-        const player = this.players.get(guildId);
-        const isPlaying = player && player.state.status === AudioPlayerStatus.Playing;
-        
-        return {
-            queue: queue,
-            queueLength: queue.length,
-            isPlaying: isPlaying
-        };
+        return true;
     }
 }
 

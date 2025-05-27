@@ -152,17 +152,14 @@ module.exports = {
                             embed.setThumbnail(selectedTrack.image);
                         }
                         
-                        await interaction.editReply({ embeds: [embed] });
+                        await interaction.channel.send({ embeds: [embed] });
+                        await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
                     } else {
                         await interaction.editReply({ 
                             content: `❌ Failed to play **${selectedTrack.name}** by ${selectedTrack.artist}. The song might not be available on YouTube.`
                         });
                         return;
                     }
-                    }
-
-                    await interaction.channel.send({ embeds: [embed] });
-                    await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
                 } else {
                     await interaction.editReply({ content: `**${selectedTrack.name}** by ${selectedTrack.artist} has been added to the queue! (Position: ${position})` });
                 }

@@ -1,4 +1,3 @@
-
 const { createSuccessEmbed, createErrorEmbed } = require('../../utils/embedBuilder');
 const AFK = require('../../models/AFK');
 
