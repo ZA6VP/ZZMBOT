@@ -176,8 +176,6 @@ module.exports = {
                     }
 
                     await interaction.channel.send({ embeds: [embed] });
-                    await interaction.editReply({ content: `Now playing: **${selectedTrack.name}** by ${selectedTrack.artist}!` });
-                } else {
                     await interaction.editReply({ content: `**${selectedTrack.name}** by ${selectedTrack.artist} has been added to the queue! (Position: ${position})` });
                 }
 
