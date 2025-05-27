@@ -12,8 +12,13 @@ module.exports = {
     },
     async execute(message, args) {
         // Check if user is in a voice channel
-        const member = message.member;
+        const member = message.guild.members.cache.get(message.author.id);
         if (!member || !member.voice || !member.voice.channel) {
+            console.log(`Voice check failed for ${message.author.username}:`, {
+                memberExists: !!member,
+                hasVoice: !!(member && member.voice),
+                hasChannel: !!(member && member.voice && member.voice.channel)
+            });
             return message.reply('You need to be in a voice channel to play music!');
         }
 
