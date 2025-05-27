@@ -1,6 +1,7 @@
 const { Collection } = require('discord.js');
-const { createErrorEmbed } = require('../utils/embedBuilder');
+const { createErrorEmbed, createInfoEmbed } = require('../utils/embedBuilder');
 const { addXP } = require('../utils/xpSystem');
+const AFK = require('../models/AFK');
 
 module.exports = {
     name: 'messageCreate',
@@ -10,6 +11,72 @@ module.exports = {
         
         const client = message.client;
         const config = client.config;
+
+        // Handle AFK system
+        if (message.guild) {
+            try {
+                // Check if user is AFK and remove AFK status
+                const afkRecord = await AFK.findOne({ userId: message.author.id, guildId: message.guild.id });
+                if (afkRecord) {
+                    // Remove AFK status
+                    await AFK.deleteOne({ userId: message.author.id, guildId: message.guild.id });
+                    
+                    // Restore original nickname
+                    try {
+                        await message.member.setNickname(afkRecord.originalNickname);
+                    } catch (error) {
+                        console.error('Could not restore nickname:', error);
+                    }
+                    
+                    // Send un-AFK message
+                    const mentionCount = afkRecord.mentions.length;
+                    let mentionText = '';
+                    if (mentionCount > 0) {
+                        const uniqueUsers = [...new Set(afkRecord.mentions.map(m => m.username))];
+                        mentionText = `\n**${mentionCount} mention${mentionCount === 1 ? '' : 's'}** from: ${uniqueUsers.join(', ')}`;
+                    }
+                    
+                    const embed = createInfoEmbed('Welcome Back!', 
+                        `${message.author}, I've removed your AFK status!${mentionText}`
+                    )
+                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                    .setColor('#00FF00');
+                    
+                    message.channel.send({ embeds: [embed] });
+                }
+
+                // Check for mentions of AFK users
+                if (message.mentions.users.size > 0) {
+                    for (const [userId, user] of message.mentions.users) {
+                        if (userId === message.author.id) continue; // Skip self-mentions
+                        
+                        const mentionedUserAFK = await AFK.findOne({ userId, guildId: message.guild.id });
+                        if (mentionedUserAFK) {
+                            // Add mention to AFK record
+                            mentionedUserAFK.mentions.push({
+                                userId: message.author.id,
+                                username: message.author.username,
+                                message: message.content.length > 100 ? message.content.substring(0, 100) + '...' : message.content,
+                                timestamp: new Date()
+                            });
+                            await mentionedUserAFK.save();
+                            
+                            // Send AFK notification
+                            const afkDuration = Math.floor((Date.now() - mentionedUserAFK.afkSince) / 1000 / 60);
+                            const embed = createInfoEmbed('User is AFK', 
+                                `${user} is currently AFK!\n**Reason:** ${mentionedUserAFK.reason}\n**AFK for:** ${afkDuration} minute${afkDuration === 1 ? '' : 's'}`
+                            )
+                            .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+                            .setColor('#FFA500');
+                            
+                            message.channel.send({ embeds: [embed] });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error handling AFK system:', error);
+            }
+        }
         
         // XP System - Award XP for messages
         if (message.guild) {
@@ -37,7 +104,8 @@ module.exports = {
                             const role = message.guild.roles.cache.find(r => r.name === levelRole);
                             await message.member.roles.add(role).catch(console.error);
                             
-                            const levelUpEmbed = createInfoEmbed('🎉 Level Up! 🎉', 
+                            const { createInfoEmbed: createLevelUpEmbed } = require('../utils/embedBuilder');
+                            const levelUpEmbed = createLevelUpEmbed('🎉 Level Up! 🎉', 
                                 `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}** and earned the **${levelRole}** role!`
                             )
                             .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
@@ -45,7 +113,7 @@ module.exports = {
                             
                             levelUpChannel.send({ embeds: [levelUpEmbed] });
                         } else {
-                            const levelUpEmbed = createInfoEmbed('🎉 Level Up! 🎉', 
+                            const levelUpEmbed = createLevelUpEmbed('🎉 Level Up! 🎉', 
                                 `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}**!`
                             )
                             .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))

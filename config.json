@@ -19,7 +19,8 @@
       "max": 25
     },
     "cooldown": 60000,
-    "xpPerLevel": 100
+    "maxLevel": 100000,
+    "exponentialScaling": true
   },
   "automod": {
     "enabled": true,

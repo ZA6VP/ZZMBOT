@@ -25,9 +25,10 @@ module.exports = {
             // Calculate XP needed for next level
             const currentLevel = userData.level;
             const currentXP = userData.xp;
-            const xpForCurrentLevel = currentLevel * 100;
-            const xpForNextLevel = (currentLevel + 1) * 100;
-            const xpToNextLevel = xpForNextLevel - currentXP;
+            const { getXPForLevel, getXPToNextLevel } = require('../../utils/xpSystem');
+            const xpForCurrentLevel = getXPForLevel(currentLevel);
+            const xpForNextLevel = getXPForLevel(currentLevel + 1);
+            const xpToNextLevel = getXPToNextLevel(currentXP, currentLevel);
 
             // Create progress bar
             const progressBarLength = 20;

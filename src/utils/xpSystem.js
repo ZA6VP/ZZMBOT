@@ -13,10 +13,10 @@ async function addXP(userId, guildId, amount) {
         user.totalMessages += 1;
         user.lastXPGain = new Date();
         
-        // Calculate new level
-        const newLevel = Math.floor(user.xp / 100);
+        // Calculate new level with exponential scaling
+        const newLevel = calculateLevelFromXP(user.xp);
         const leveledUp = newLevel > user.level;
-        user.level = newLevel;
+        user.level = Math.min(newLevel, 100000); // Cap at level 100,000
         
         await user.save();
         
@@ -55,11 +55,26 @@ async function getLeaderboard(guildId, limit = 10) {
 }
 
 function getXPForLevel(level) {
-    return level * 100;
+    if (level <= 0) return 0;
+    // Exponential formula: XP = 100 * (1.1^level - 1) / 0.1
+    return Math.floor(100 * (Math.pow(1.1, level) - 1) / 0.1);
 }
 
 function getLevelFromXP(xp) {
-    return Math.floor(xp / 100);
+    if (xp <= 0) return 0;
+    // Inverse of exponential formula: level = log(xp * 0.1 / 100 + 1) / log(1.1)
+    const level = Math.floor(Math.log(xp * 0.1 / 100 + 1) / Math.log(1.1));
+    return Math.min(level, 100000); // Cap at level 100,000
+}
+
+function calculateLevelFromXP(xp) {
+    return getLevelFromXP(xp);
+}
+
+function getXPToNextLevel(currentXP, currentLevel) {
+    if (currentLevel >= 100000) return 0; // Max level reached
+    const nextLevelXP = getXPForLevel(currentLevel + 1);
+    return nextLevelXP - currentXP;
 }
 
 module.exports = {
@@ -67,5 +82,7 @@ module.exports = {
     getUser,
     getLeaderboard,
     getXPForLevel,
-    getLevelFromXP
+    getLevelFromXP,
+    calculateLevelFromXP,
+    getXPToNextLevel
 };
