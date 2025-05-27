@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const { connectDatabase } = require('./utils/database');
+const { connectDB } = require('./utils/database');
 const { loadCommands } = require('./utils/commandHandler');
 
 // Create a new client instance
@@ -63,7 +63,7 @@ process.on('uncaughtException', error => {
 async function startBot() {
     try {
         // Try to connect to database (non-critical)
-        const dbConnected = await connectDatabase();
+        const dbConnected = await connectDB();
         if (dbConnected) {
             console.log('Connected to MongoDB');
         } else {
