@@ -5,11 +5,8 @@ async function connectDatabase() {
         const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/pdw-bot';
         
         await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            bufferMaxEntries: 0,
             maxPoolSize: 10,
             minPoolSize: 5,
             maxIdleTimeMS: 30000
