@@ -11,6 +11,13 @@ module.exports = {
         cooldown: 3
     },
     async execute(message, args) {
+        // Force refresh member object to get current voice state
+        try {
+            await message.member.fetch();
+        } catch (error) {
+            console.error('Error fetching member:', error);
+        }
+
         // Check if user is in a voice channel
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) {

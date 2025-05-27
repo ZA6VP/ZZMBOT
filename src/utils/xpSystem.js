@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 async function addXP(userId, guildId, amount) {
@@ -9,7 +10,7 @@ async function addXP(userId, guildId, amount) {
         }
 
         let user = await User.findOne({ userId, guildId }).timeout(5000);
-        
+
         if (!user) {
             user = new User({ userId, guildId, xp: amount, level: 0, totalMessages: 1, lastXPGain: new Date() });
         } else {
@@ -17,14 +18,14 @@ async function addXP(userId, guildId, amount) {
             user.totalMessages += 1;
             user.lastXPGain = new Date();
         }
-        
+
         // Calculate new level with exponential scaling
         const newLevel = calculateLevelFromXP(user.xp);
         const leveledUp = newLevel > user.level;
         user.level = Math.min(newLevel, 100000); // Cap at level 100,000
-        
+
         await user.save();
-        
+
         return { user, leveledUp, newLevel };
     } catch (error) {
         console.error('Error adding XP:', error);
@@ -48,12 +49,12 @@ async function getUser(userId, guildId) {
         }
 
         let user = await User.findOne({ userId, guildId }).timeout(5000);
-        
+
         if (!user) {
             user = new User({ userId, guildId, xp: 0, level: 0, totalMessages: 0, lastXPGain: new Date() });
             await user.save();
         }
-        
+
         return user;
     } catch (error) {
         console.error('Error getting user:', error);
