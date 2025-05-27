@@ -11,26 +11,20 @@ module.exports = {
         cooldown: 3
     },
     async execute(message, args) {
-        try {
-            // Check if user is in a voice channel with better detection
-            const member = message.member || await message.guild.members.fetch(message.author.id);
-            const voiceChannel = member.voice?.channel;
-            
-            console.log(`Voice check for ${message.author.username}: ${voiceChannel ? voiceChannel.name : 'No channel'}`);
-            
-            if (!voiceChannel) {
-                return message.reply('You need to be in a voice channel to play music!');
-            }
+        // Check if user is in a voice channel
+        const member = message.member;
+        if (!member || !member.voice || !member.voice.channel) {
+            return message.reply('You need to be in a voice channel to play music!');
+        }
 
-            // Check bot permissions in voice channel
-            const botMember = message.guild.members.me;
-            const permissions = voiceChannel.permissionsFor(botMember);
-            if (!permissions.has(['Connect', 'Speak'])) {
-                return message.reply('I need permission to connect and speak in your voice channel!');
-            }
-        } catch (error) {
-            console.error('Error checking voice channel:', error);
-            return message.reply('There was an error checking your voice channel status!');
+        const voiceChannel = member.voice.channel;
+        console.log(`User ${message.author.username} is in voice channel: ${voiceChannel.name}`);
+
+        // Check bot permissions in voice channel
+        const botMember = message.guild.members.me;
+        const permissions = voiceChannel.permissionsFor(botMember);
+        if (!permissions.has(['Connect', 'Speak'])) {
+            return message.reply('I need permission to connect and speak in your voice channel!');
         }
 
         // Check if a song was provided
@@ -81,9 +75,8 @@ module.exports = {
                 message.client.trackSelections = new Map();
             }
             
-            // Get voice channel again for storage
-            const member = message.member || await message.guild.members.fetch(message.author.id);
-            const userVoiceChannel = member.voice?.channel;
+            // Store the voice channel for later use
+            const userVoiceChannel = voiceChannel;
             
             message.client.trackSelections.set(response.id, {
                 tracks: tracks,

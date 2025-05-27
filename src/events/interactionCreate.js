@@ -126,25 +126,49 @@ module.exports = {
             }
 
             try {
+                console.log(`User selected track: ${selectedTrack.name} by ${selectedTrack.artist}`);
+                
                 // Join voice channel if not already connected
                 let connection = musicManager.connections.get(interaction.guild.id);
                 if (!connection) {
+                    console.log(`Joining voice channel: ${selectionData.voiceChannel.name}`);
                     connection = await musicManager.joinChannel(selectionData.voiceChannel);
                     if (!connection) {
-                        return interaction.editReply({ content: 'Failed to join the voice channel!' });
+                        return interaction.editReply({ 
+                            content: 'Failed to join the voice channel! Please try again.' 
+                        });
                     }
                 }
 
-                // Add to queue
-                const position = musicManager.addToQueue(interaction.guild.id, selectedTrack);
-                
-                // If this is the first track, start playing
+                // Check if anything is currently playing
                 const queueStatus = musicManager.getQueueStatus(interaction.guild.id);
-                if (!queueStatus.isPlaying) {
-                    await musicManager.playTrack(interaction.guild.id, selectedTrack);
+                
+                if (!queueStatus.isPlaying && queueStatus.queueLength === 0) {
+                    // Start playing immediately
+                    console.log('Starting to play track immediately');
+                    const success = await musicManager.playTrack(interaction.guild.id, selectedTrack);
                     
-                    const embed = createInfoEmbed('🎵 Now Playing', 
-                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}`
+                    if (success) {
+                        const embed = createInfoEmbed('🎵 Now Playing', 
+                            `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nFrom album: ${selectedTrack.album || 'Unknown'}`
+                        ).setColor('#1DB954');
+
+                        if (selectedTrack.image) {
+                            embed.setThumbnail(selectedTrack.image);
+                        }
+
+                        await interaction.editReply({ embeds: [embed] });
+                    } else {
+                        await interaction.editReply({ 
+                            content: 'Failed to play the track. The song might not be available on YouTube.' 
+                        });
+                    }
+                } else {
+                    // Add to queue
+                    const position = musicManager.addToQueue(interaction.guild.id, selectedTrack);
+                    
+                    const embed = createInfoEmbed('🎵 Added to Queue', 
+                        `**${selectedTrack.name}**\nby ${selectedTrack.artist}\n\nPosition in queue: #${position}`
                     ).setColor('#1DB954');
 
                     if (selectedTrack.image) {

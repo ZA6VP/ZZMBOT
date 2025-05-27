@@ -1,5 +1,7 @@
+
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const ytsr = require('youtube-sr').default;
 const SpotifyWebApi = require('spotify-web-api-node');
 
 class MusicManager {
@@ -7,6 +9,7 @@ class MusicManager {
         this.queues = new Map(); // Guild ID -> Queue
         this.players = new Map(); // Guild ID -> Audio Player
         this.connections = new Map(); // Guild ID -> Voice Connection
+        this.currentTracks = new Map(); // Guild ID -> Current Track
         
         // Initialize Spotify API
         this.spotifyApi = new SpotifyWebApi({
@@ -23,15 +26,16 @@ class MusicManager {
             this.spotifyApi.setAccessToken(data.body['access_token']);
             console.log('Spotify API initialized successfully');
             
-            // Refresh token every hour
+            // Refresh token every 50 minutes
             setInterval(async () => {
                 try {
                     const data = await this.spotifyApi.clientCredentialsGrant();
                     this.spotifyApi.setAccessToken(data.body['access_token']);
+                    console.log('Spotify token refreshed successfully');
                 } catch (error) {
                     console.error('Error refreshing Spotify token:', error);
                 }
-            }, 3600000);
+            }, 3000000); // 50 minutes
         } catch (error) {
             console.error('Error initializing Spotify API:', error);
         }
@@ -47,7 +51,8 @@ class MusicManager {
                 url: track.external_urls.spotify,
                 preview_url: track.preview_url,
                 id: track.id,
-                image: track.album.images[0]?.url
+                image: track.album.images[0]?.url,
+                album: track.album.name
             }));
         } catch (error) {
             console.error('Error searching Spotify:', error);
@@ -59,39 +64,33 @@ class MusicManager {
         try {
             console.log(`Searching YouTube for: ${query}`);
             
-            // Use a more reliable YouTube search approach
-            // We'll search for the track and try to find a working video
-            const searchTerm = encodeURIComponent(query);
+            // Search for videos using youtube-sr
+            const searchResults = await ytsr.search(query, {
+                limit: 5,
+                type: 'video'
+            });
             
-            // Try to find YouTube videos using a basic search approach
-            // Note: This requires proper YouTube API integration for production use
-            const searchUrl = `https://www.youtube.com/results?search_query=${searchTerm}`;
+            if (!searchResults || searchResults.length === 0) {
+                console.log('No YouTube results found');
+                return null;
+            }
             
-            // For now, we'll use ytdl-core with some common working video IDs
-            // In production, you'd want to implement proper YouTube API search
-            const commonMusicVideos = [
-                'https://www.youtube.com/watch?v=kJQP7kiw5Fk', // Despacito
-                'https://www.youtube.com/watch?v=9bZkp7q19f0', // Gangnam Style
-                'https://www.youtube.com/watch?v=fJ9rUzIMcZQ', // Bohemian Rhapsody
-                'https://www.youtube.com/watch?v=JGwWNGJdvx8'  // Shape of You
-            ];
-            
-            // Try each video to see which one works with ytdl-core
-            for (const videoUrl of commonMusicVideos) {
+            // Try each result to find a working one
+            for (const video of searchResults) {
                 try {
-                    // Test if this URL works with ytdl
-                    const info = await ytdl.getBasicInfo(videoUrl);
-                    if (info && info.videoDetails && info.formats) {
-                        console.log(`Found working YouTube video: ${videoUrl}`);
-                        return videoUrl;
+                    // Validate the video URL with ytdl-core
+                    const isValid = ytdl.validateURL(video.url);
+                    if (isValid) {
+                        console.log(`Found working YouTube video: ${video.title} - ${video.url}`);
+                        return video.url;
                     }
                 } catch (err) {
-                    console.log(`Video ${videoUrl} not available, trying next...`);
+                    console.log(`Video ${video.url} not valid, trying next...`);
                     continue;
                 }
             }
             
-            // If none work, return null so we can show an error
+            console.log('No valid YouTube videos found');
             return null;
         } catch (error) {
             console.error('Error searching YouTube:', error);
@@ -114,6 +113,8 @@ class MusicManager {
 
     async joinChannel(channel) {
         try {
+            console.log(`Attempting to join voice channel: ${channel.name}`);
+            
             const connection = joinVoiceChannel({
                 channelId: channel.id,
                 guildId: channel.guild.id,
@@ -123,11 +124,22 @@ class MusicManager {
             });
 
             connection.on(VoiceConnectionStatus.Ready, () => {
-                console.log('Voice connection is ready!');
+                console.log(`Voice connection ready in ${channel.name}`);
             });
 
             connection.on(VoiceConnectionStatus.Disconnected, () => {
                 console.log('Voice connection disconnected');
+                // Try to reconnect
+                setTimeout(() => {
+                    if (connection.state.status === VoiceConnectionStatus.Disconnected) {
+                        connection.destroy();
+                        this.connections.delete(channel.guild.id);
+                    }
+                }, 5000);
+            });
+
+            connection.on('error', error => {
+                console.error('Voice connection error:', error);
             });
 
             this.connections.set(channel.guild.id, connection);
@@ -141,7 +153,10 @@ class MusicManager {
     async playTrack(guildId, track) {
         try {
             const connection = this.connections.get(guildId);
-            if (!connection) return false;
+            if (!connection) {
+                console.error('No voice connection found for guild');
+                return false;
+            }
 
             let player = this.players.get(guildId);
             if (!player) {
@@ -150,7 +165,12 @@ class MusicManager {
                 connection.subscribe(player);
 
                 player.on(AudioPlayerStatus.Idle, () => {
+                    console.log('Track finished, playing next...');
                     this.playNext(guildId);
+                });
+
+                player.on(AudioPlayerStatus.Playing, () => {
+                    console.log('Audio player is now playing');
                 });
 
                 player.on('error', error => {
@@ -160,9 +180,11 @@ class MusicManager {
             }
 
             console.log(`Attempting to play: ${track.name} by ${track.artist}`);
+            this.currentTracks.set(guildId, track);
             
             // Search for the track on YouTube
-            const youtubeUrl = await this.searchYouTube(`${track.name} ${track.artist}`);
+            const searchQuery = `${track.name} ${track.artist}`;
+            const youtubeUrl = await this.searchYouTube(searchQuery);
             
             if (!youtubeUrl) {
                 console.error('Could not find YouTube video for track');
@@ -170,16 +192,31 @@ class MusicManager {
             }
             
             try {
+                console.log(`Creating audio stream from: ${youtubeUrl}`);
+                
                 const stream = ytdl(youtubeUrl, { 
-                    filter: 'audioonly', 
+                    filter: 'audioonly',
                     quality: 'highestaudio',
-                    highWaterMark: 1 << 25
+                    highWaterMark: 1 << 25,
+                    requestOptions: {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    }
                 });
                 
-                const resource = createAudioResource(stream);
+                const resource = createAudioResource(stream, {
+                    inputType: 'arbitrary',
+                    inlineVolume: true
+                });
+                
+                // Set volume to 50%
+                if (resource.volume) {
+                    resource.volume.setVolume(0.5);
+                }
                 
                 player.play(resource);
-                console.log(`Started playing: ${track.name} by ${track.artist}`);
+                console.log(`Successfully started playing: ${track.name} by ${track.artist}`);
                 return true;
             } catch (ytdlError) {
                 console.error('YTDL error:', ytdlError);
@@ -194,9 +231,13 @@ class MusicManager {
     async playNext(guildId) {
         const queue = this.getQueue(guildId);
         if (queue.length === 0) {
-            // No more tracks, disconnect after 5 minutes of inactivity
+            console.log('Queue is empty, will disconnect in 5 minutes if no new tracks');
+            this.currentTracks.delete(guildId);
+            
+            // Disconnect after 5 minutes of inactivity
             setTimeout(() => {
                 if (this.getQueue(guildId).length === 0) {
+                    console.log('Disconnecting due to inactivity');
                     this.disconnect(guildId);
                 }
             }, 300000);
@@ -204,12 +245,14 @@ class MusicManager {
         }
 
         const nextTrack = queue.shift();
+        console.log(`Playing next track: ${nextTrack.name}`);
         await this.playTrack(guildId, nextTrack);
     }
 
     skip(guildId) {
         const player = this.players.get(guildId);
         if (player) {
+            console.log('Skipping current track');
             player.stop();
             return true;
         }
@@ -231,22 +274,25 @@ class MusicManager {
         }
 
         this.queues.set(guildId, []);
+        this.currentTracks.delete(guildId);
+        console.log(`Disconnected from voice channel in guild ${guildId}`);
     }
 
     getCurrentTrack(guildId) {
-        // This would need to be implemented to track current playing track
-        return null;
+        return this.currentTracks.get(guildId) || null;
     }
 
     getQueueStatus(guildId) {
         const queue = this.getQueue(guildId);
         const player = this.players.get(guildId);
         const isPlaying = player && player.state.status === AudioPlayerStatus.Playing;
+        const currentTrack = this.getCurrentTrack(guildId);
         
         return {
             queue: queue,
             queueLength: queue.length,
-            isPlaying: isPlaying
+            isPlaying: isPlaying,
+            currentTrack: currentTrack
         };
     }
 }

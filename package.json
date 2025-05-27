@@ -19,6 +19,7 @@
     "node-fetch": "^3.3.2",
     "opusscript": "^0.0.8",
     "spotify-web-api-node": "^5.0.2",
+    "youtube-sr": "^4.3.11",
     "ytdl-core": "^4.11.5"
   }
 }
