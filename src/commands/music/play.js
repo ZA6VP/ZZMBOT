@@ -11,23 +11,30 @@ module.exports = {
         cooldown: 3
     },
     async execute(message, args) {
-        // Check if user is in a voice channel
-        const member = message.member;
-        const voiceState = member.voice;
+        // Wait a moment for Discord to update voice states
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        console.log('Voice state debug:', {
+        // Get fresh member data from guild
+        await message.guild.members.fetch(message.author.id);
+        const member = message.guild.members.cache.get(message.author.id);
+        
+        console.log('Full voice state debug:', {
+            userId: message.author.id,
+            username: message.author.username,
             memberExists: !!member,
-            voiceState: !!voiceState,
-            channelId: voiceState?.channelId,
-            channel: !!voiceState?.channel
+            voiceState: !!member?.voice,
+            channelId: member?.voice?.channelId,
+            channel: !!member?.voice?.channel,
+            channelName: member?.voice?.channel?.name
         });
         
-        if (!voiceState || !voiceState.channel) {
+        if (!member || !member.voice || !member.voice.channel) {
+            console.log('Voice check failed - user not in voice channel');
             return message.reply('You need to be in a voice channel to play music!');
         }
 
-        const voiceChannel = voiceState.channel;
-        console.log(`User ${message.author.username} is in voice channel: ${voiceChannel.name}`);
+        const voiceChannel = member.voice.channel;
+        console.log(`✅ User ${message.author.username} confirmed in voice channel: ${voiceChannel.name}`);
 
         // Check bot permissions in voice channel
         const botMember = message.guild.members.me;
