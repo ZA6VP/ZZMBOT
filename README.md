@@ -1,62 +1,57 @@
-# PDW Bot - Multipurpose Discord Bot
+# Zolory Discord Bot
 
-A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.
+Zolory is an advanced AI-powered Discord bot with a dynamic personality, multi-language support, moderation tools, games and more. Under the hood it leverages Google Gemini LLM running on your own infrastructure – **no OpenAI / ChatGPT required**.
 
-## 🌟 Features
+## Features
 
-### 🛡️ Moderation
-- **Ban/Unban** - Permanently ban or unban users with reasons
-- **Kick** - Remove users from the server temporarily  
-- **Timeout** - Apply temporary timeouts to users
-- **Mute/Unmute** - Role-based muting system with auto-unmute
-- **Warn** - Issue warnings to users with infraction tracking
-- **Infractions** - View user's moderation history
-- **Purge** - Bulk delete messages (up to 100)
-- **Lock/Unlock** - Lock channels to prevent messaging
+* Conversational AI with moods and slang (19-year-old Latino male style)
+* Supports 24 languages and code generation for multiple programming languages
+* Natural-language moderation: ban / kick / timeout / warn by simply talking to Zolory
+* Games like Tic-Tac-Toe with score tracking
+* Random GIFs, emoji reactions, custom presence and status updates (sleep schedule, naps)
+* Proactive conversations and configurable behaviour toggles
 
-### 📈 Leveling & XP System
-- **Automatic XP** - Gain XP by sending messages (15-25 XP per message)
-- **Level Roles** - Automatically assign roles when users reach certain levels
-- **Leaderboard** - View top users by XP in the server
-- **XP Command** - Check your or another user's level and progress
-- **Configurable** - Customize XP rates and cooldowns
+## Quick Start
 
-### 🎉 Giveaways
-- **Create Giveaways** - Start giveaways with custom duration and prizes
-- **Multiple Winners** - Support for multiple winners per giveaway
-- **Auto-End** - Automatically picks winners when time expires
-- **Manual Control** - End giveaways early or reroll winners
-- **Reaction-Based** - Users enter by reacting with 🎉
+1. Clone the repository and install dependencies:
 
-### 🔧 Utility Commands
-- **Ping** - Check bot latency and connection status
-- **User Info** - Detailed information about users
-- **Server Info** - Comprehensive server statistics
-- **Help** - Complete command documentation
-- **Suggestions** - Collect user suggestions with voting
-- **Announcements** - Send formatted announcements
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-### 🎮 Fun Commands
-- **Memes** - Random memes from Reddit
-- **Dice Roll** - Roll dice with custom sides
-- **Cat/Dog** - Random cute animal pictures
-- **Trivia** - Interactive trivia questions with multiple categories
+2. Copy `.env.example` to `.env` and fill in your tokens:
 
-### 📊 Logging & Monitoring
-- **Moderation Logs** - All mod actions logged to designated channel
-- **Member Events** - Log member joins and message deletions
-- **Auto-moderation** - Configurable bad word filtering (coming soon)
+   ```env
+   DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN
+   GEMINI_API_KEY=AIZA...k7M
+   OWNER_ID=1219957467690172517  # Zap
+   ```
 
-## 🚀 Quick Start
+3. Run the bot:
 
-### Prerequisites
-- Node.js 16.9.0 or higher
-- MongoDB database (local or cloud)
-- Discord Bot Token
+   ```bash
+   python bot.py
+   ```
 
-### Installation
+## Directory Structure
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/pdw-bot.git
-cd pdw-bot
+```
+├── bot.py                # Entrypoint
+├── cogs/                 # Modular bot logic
+│   ├── conversation.py
+│   ├── moderation.py
+│   ├── games.py
+│   └── presence.py
+├── utils/
+│   ├── gemini_client.py  # Gemini wrapper
+│   └── helpers.py        # GIF / Emoji helpers
+├── requirements.txt
+└── README.md
+```
+
+---
+
+### Disclaimer
+This project is provided as-is for educational purposes. Running large language models can incur costs and should comply with the provider’s terms of service.
