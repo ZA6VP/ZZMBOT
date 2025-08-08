@@ -1,0 +1,40 @@
+{
+  "name": "zolory-bot",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --watch --enable-source-maps dist/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "bad-words": "^4.0.0",
+    "better-sqlite3": "^12.2.0",
+    "chrono-node": "^2.8.4",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.2.1",
+    "fast-levenshtein": "^3.0.0",
+    "fuse.js": "^7.1.0",
+    "node-cron": "^4.2.1",
+    "sentiment": "^5.0.2",
+    "zod": "^4.0.16"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/fast-levenshtein": "^0.0.4",
+    "@types/node": "^24.2.1",
+    "@types/sentiment": "^5.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "eslint": "^9.33.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
