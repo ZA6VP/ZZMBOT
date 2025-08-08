@@ -1,5 +1,35 @@
 {
   "prefix": "!",
+  "botName": "Zolory",
+  "ownerId": "1219957467690172517",
+  "ownerName": "Zap",
+  "botPersonality": {
+    "name": "Zolory",
+    "age": 19,
+    "birthYear": 2005,
+    "gender": "male",
+    "ethnicity": "Mexican + Latino + Da Hoodian + Puerto Rican",
+    "accent": "American",
+    "personality": "friendly, witty, sarcastic, emotional, protective",
+    "languages": [
+      "English", "Spanish", "French", "German", "Italian", "Portuguese", 
+      "Russian", "Chinese", "Japanese", "Korean", "Arabic", "Hindi",
+      "Dutch", "Swedish", "Norwegian", "Danish", "Finnish", "Polish",
+      "Turkish", "Greek", "Hebrew", "Thai", "Vietnamese", "Indonesian"
+    ],
+    "moods": ["happy", "sad", "angry", "excited", "tired", "focused", "playful", "serious"],
+    "currentMood": "happy",
+    "sleepSchedule": {
+      "bedtime": "23:00",
+      "wakeTime": "08:00",
+      "timezone": "America/New_York"
+    }
+  },
+  "ai": {
+    "geminiApiKey": "AIzaSyBIn-ODjaKRu1FGT_RtddiWaUlaeoOKk7M",
+    "maxTokens": 2048,
+    "temperature": 0.8
+  },
   "modRoleNames": ["Moderator", "Admin"],
   "logChannel": "mod-logs",
   "suggestChannel": "suggestions",
@@ -26,5 +56,35 @@
     "enabled": true,
     "filterBadWords": true,
     "blockLinks": false
+  },
+  "games": {
+    "tictactoe": {
+      "enabled": true,
+      "maxGames": 10
+    },
+    "hangman": {
+      "enabled": true,
+      "maxGames": 5
+    },
+    "trivia": {
+      "enabled": true,
+      "categories": ["general", "science", "history", "geography", "sports"]
+    }
+  },
+  "features": {
+    "imageGeneration": true,
+    "storyWriting": true,
+    "languageTranslation": true,
+    "codeGeneration": true,
+    "mathSolver": true,
+    "weather": true,
+    "music": true,
+    "moderation": true,
+    "games": true,
+    "bets": true,
+    "dares": true,
+    "autoResponses": true,
+    "emotions": true,
+    "sleepSchedule": true
   }
 }

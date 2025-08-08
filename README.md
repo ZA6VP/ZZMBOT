@@ -1,62 +1,194 @@
-# PDW Bot - Multipurpose Discord Bot
+# 🤖 Zolory - Advanced AI Discord Bot
 
-A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.
+**Zolory** is a 19-year-old Mexican + Latino + Da Hoodian + Puerto Rican AI assistant with an American accent, designed to be your ultimate Discord companion! 
 
 ## 🌟 Features
 
-### 🛡️ Moderation
-- **Ban/Unban** - Permanently ban or unban users with reasons
-- **Kick** - Remove users from the server temporarily  
-- **Timeout** - Apply temporary timeouts to users
-- **Mute/Unmute** - Role-based muting system with auto-unmute
-- **Warn** - Issue warnings to users with infraction tracking
-- **Infractions** - View user's moderation history
-- **Purge** - Bulk delete messages (up to 100)
-- **Lock/Unlock** - Lock channels to prevent messaging
+### 🤖 AI Capabilities
+- **Natural Language Processing** - Understands and responds to natural conversations
+- **Code Generation** - Generates code in multiple programming languages
+- **Story Writing** - Creates creative stories in various genres
+- **Language Translation** - Translates between 24 languages
+- **Math Problem Solving** - Solves complex mathematical problems
+- **Image Generation** - Creates images from descriptions (coming soon)
 
-### 📈 Leveling & XP System
-- **Automatic XP** - Gain XP by sending messages (15-25 XP per message)
-- **Level Roles** - Automatically assign roles when users reach certain levels
-- **Leaderboard** - View top users by XP in the server
-- **XP Command** - Check your or another user's level and progress
-- **Configurable** - Customize XP rates and cooldowns
+### 🎮 Interactive Games
+- **Tic-Tac-Toe** - Play against Zolory
+- **Hangman** - Word guessing game
+- **Trivia** - Test your knowledge
+- **Rock, Paper, Scissors** - Classic game
 
-### 🎉 Giveaways
-- **Create Giveaways** - Start giveaways with custom duration and prizes
-- **Multiple Winners** - Support for multiple winners per giveaway
-- **Auto-End** - Automatically picks winners when time expires
-- **Manual Control** - End giveaways early or reroll winners
-- **Reaction-Based** - Users enter by reacting with 🎉
+### 🛡️ Moderation Tools
+- **Ban/Kick** - Moderate members
+- **Timeout/Mute** - Temporary restrictions
+- **Warning System** - Track member warnings
+- **Natural Language Commands** - "Yo Zolory, ban user123 for 1h because spam"
 
-### 🔧 Utility Commands
-- **Ping** - Check bot latency and connection status
-- **User Info** - Detailed information about users
-- **Server Info** - Comprehensive server statistics
-- **Help** - Complete command documentation
-- **Suggestions** - Collect user suggestions with voting
-- **Announcements** - Send formatted announcements
+### 😊 Personality & Emotions
+- **Dynamic Moods** - Happy, sad, angry, excited, playful, focused, serious, calm
+- **Emotional Responses** - Reacts to user interactions
+- **Sleep Schedule** - Goes to sleep at night and takes naps
+- **Realistic Personality** - Speaks like a Gen Z male with 2024-2025 slang
 
-### 🎮 Fun Commands
-- **Memes** - Random memes from Reddit
-- **Dice Roll** - Roll dice with custom sides
-- **Cat/Dog** - Random cute animal pictures
-- **Trivia** - Interactive trivia questions with multiple categories
-
-### 📊 Logging & Monitoring
-- **Moderation Logs** - All mod actions logged to designated channel
-- **Member Events** - Log member joins and message deletions
-- **Auto-moderation** - Configurable bad word filtering (coming soon)
+### 🎯 Fun Features
+- **Bets & Dares** - Make bets and dares with Zolory
+- **Roasting** - Fun roasts (all in good fun!)
+- **Compliments** - Spread positivity
+- **GIF Responses** - Sends relevant GIFs and emojis
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 16.9.0 or higher
-- MongoDB database (local or cloud)
 - Discord Bot Token
+- MongoDB (optional, for database features)
 
 ### Installation
 
 1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/pdw-bot.git
-cd pdw-bot
+   ```bash
+   git clone <repository-url>
+   cd zolory-discord-bot
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Discord bot token
+   ```
+
+4. **Start the bot**
+   ```bash
+   npm start
+   ```
+
+## 🔧 Configuration
+
+### Environment Variables
+- `DISCORD_TOKEN` - Your Discord bot token (required)
+- `MONGODB_URI` - MongoDB connection string (optional)
+- `NODE_ENV` - Environment (development/production)
+- `LOG_LEVEL` - Logging level (info/debug/error)
+
+### Bot Configuration
+Edit `config.json` to customize:
+- Bot personality and traits
+- Sleep schedule
+- Game settings
+- Moderation features
+- AI parameters
+
+## 🎮 Commands
+
+### Basic Commands
+- `!help` - Show all commands and features
+- `!ping` - Check bot latency and status
+- `!stats` - Show bot statistics
+- `!mood` - Check or change Zolory's mood
+
+### AI Commands
+- `!code <language> <description>` - Generate code
+- `!story <genre> [length]` - Write a story
+- `!translate <language> <text>` - Translate text
+- `!math <problem>` - Solve math problems
+
+### Games
+- `!tictactoe` - Play Tic-Tac-Toe
+- `!hangman` - Play Hangman
+- `!trivia` - Play Trivia
+- `!rps` - Rock, Paper, Scissors
+
+### Moderation
+- `!ban <user> [duration] [reason]` - Ban a member
+- `!kick <user> [reason]` - Kick a member
+- `!timeout <user> <duration> [reason]` - Timeout a member
+- `!warn <user> [reason]` - Warn a member
+
+### Fun Commands
+- `!bet <description>` - Make a bet
+- `!dare <description>` - Give a dare
+- `!roast [user]` - Roast someone (fun!)
+- `!sleep [nap/wake/status]` - Sleep management
+
+## 💬 Natural Language
+
+Zolory understands natural language! Just mention him or say his name:
+
+- "Yo Zolory, ban user123 for 1h because spam"
+- "Zolory, let's play tictactoe"
+- "Zolory, write me a fantasy story"
+- "Zolory, translate hello to Spanish"
+
+## 🎭 Personality
+
+**Zolory** is a 19-year-old AI with a unique personality:
+- **Ethnicity**: Mexican + Latino + Da Hoodian + Puerto Rican
+- **Accent**: American
+- **Languages**: 24 languages
+- **Personality**: Friendly, witty, sarcastic, emotional, protective
+- **Communication**: Gen Z slang, emojis, expressive
+
+## 🔄 Sleep Schedule
+
+Zolory has a realistic sleep schedule:
+- **Bedtime**: 11:00 PM EST
+- **Wake Time**: 8:00 AM EST
+- **Naps**: Can take naps during the day
+- **Status**: Changes status when sleeping
+
+## 🛠️ Development
+
+### Project Structure
+```
+src/
+├── commands/          # Bot commands
+├── events/           # Discord events
+├── utils/            # Utility functions
+│   ├── zoloryAI.js   # AI integration
+│   ├── emotionManager.js # Emotion system
+│   ├── gameManager.js    # Game management
+│   ├── moderationManager.js # Moderation tools
+│   └── ...
+└── index.js          # Main bot file
+```
+
+### Adding New Features
+1. Create new command in `src/commands/`
+2. Add utility functions in `src/utils/`
+3. Update `config.json` if needed
+4. Test thoroughly
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the ISC License.
+
+## 🙏 Acknowledgments
+
+- **Owner**: Zap (ID: 1219957467690172517)
+- **AI Integration**: Google Gemini API
+- **Framework**: Discord.js
+- **Community**: All the amazing Discord users who test and provide feedback
+
+## 🆘 Support
+
+If you need help:
+1. Check the [Issues](https://github.com/your-repo/issues) page
+2. Join our Discord server
+3. Contact the owner: Zap
+
+---
+
+**Made with ❤️ by Zap**

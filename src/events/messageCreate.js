@@ -1,174 +1,191 @@
-const { Collection } = require('discord.js');
-const { createErrorEmbed, createInfoEmbed } = require('../utils/embedBuilder');
-const { addXP } = require('../utils/xpSystem');
-const AFK = require('../models/AFK');
+const { Events } = require('discord.js');
 
 module.exports = {
-    name: 'messageCreate',
+    name: Events.MessageCreate,
     async execute(message) {
-        // Ignore bots and system messages
-        if (message.author.bot || message.system) return;
+        const { client, author, content, guild, channel } = message;
 
-        const client = message.client;
-        const config = client.config;
+        // Ignore bot messages
+        if (author.bot) return;
 
-        // Handle AFK system
-        if (message.guild) {
-            try {
-                // Check if user is AFK and remove AFK status
-                const afkRecord = await AFK.findOne({ userId: message.author.id, guildId: message.guild.id }).timeout(2000);
-                if (afkRecord) {
-                    // Remove AFK status
-                    await AFK.deleteOne({ userId: message.author.id, guildId: message.guild.id });
-
-                    // Restore original nickname
-                    try {
-                        await message.member.setNickname(afkRecord.originalNickname);
-                    } catch (error) {
-                        console.error('Could not restore nickname:', error);
-                    }
-
-                    // Send un-AFK message
-                    const mentionCount = afkRecord.mentions.length;
-                    let mentionText = '';
-                    if (mentionCount > 0) {
-                        const uniqueUsers = [...new Set(afkRecord.mentions.map(m => m.username))];
-                        mentionText = `\n**${mentionCount} mention${mentionCount === 1 ? '' : 's'}** from: ${uniqueUsers.join(', ')}`;
-                    }
-
-                    const embed = createInfoEmbed('Welcome Back!', 
-                        `${message.author}, I've removed your AFK status!${mentionText}`
-                    )
-                    .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-                    .setColor('#00FF00');
-
-                    message.channel.send({ embeds: [embed] });
-                }
-
-                // Check for mentions of AFK users
-                if (message.mentions.users.size > 0) {
-                    for (const [userId, user] of message.mentions.users) {
-                        if (userId === message.author.id) continue; // Skip self-mentions
-
-                        const mentionedUserAFK = await AFK.findOne({ userId, guildId: message.guild.id }).timeout(2000);
-                        if (mentionedUserAFK) {
-                            // Add mention to AFK record
-                            mentionedUserAFK.mentions.push({
-                                userId: message.author.id,
-                                username: message.author.username,
-                                message: message.content.length > 100 ? message.content.substring(0, 100) + '...' : message.content,
-                                timestamp: new Date()
-                            });
-                            await mentionedUserAFK.save();
-
-                            // Send AFK notification
-                            const afkDuration = Math.floor((Date.now() - mentionedUserAFK.afkSince) / 1000 / 60);
-                            const embed = createInfoEmbed('User is AFK', 
-                                `${user} is currently AFK!\n**Reason:** ${mentionedUserAFK.reason}\n**AFK for:** ${afkDuration} minute${afkDuration === 1 ? '' : 's'}`
-                            )
-                            .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-                            .setColor('#FFA500');
-
-                            message.channel.send({ embeds: [embed] });
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error handling AFK system:', error);
+        // Check if bot is asleep
+        if (client.botState && !client.botState.isAwake) {
+            // Only respond to owner or urgent messages when asleep
+            if (author.id !== client.config.ownerId && !content.toLowerCase().includes('wake')) {
+                return;
             }
         }
 
-        // XP System - Award XP for messages
-        if (message.guild) {
-            const now = Date.now();
-            const cooldownAmount = config.xp.cooldown;
-
-            if (!client.cooldowns.has('xp')) {
-                client.cooldowns.set('xp', new Collection());
-            }
-
-            const timestamps = client.cooldowns.get('xp');
-            const cooldownKey = `${message.author.id}-${message.guild.id}`;
-
-            if (!timestamps.has(cooldownKey) || (now - timestamps.get(cooldownKey)) >= cooldownAmount) {
-                const xpGain = Math.floor(Math.random() * (config.xp.messageXP.max - config.xp.messageXP.min + 1)) + config.xp.messageXP.min;
-                console.log(`Awarding ${xpGain} XP to ${message.author.username}`);
-                const result = await addXP(message.author.id, message.guild.id, xpGain);
-
-                if (result && result.leveledUp) {
-                    const levelUpChannelId = '1375225897317175397';
-                    const levelUpChannel = message.guild.channels.cache.get(levelUpChannelId);
-
-                    if (levelUpChannel) {
-                        const levelRole = config.levelUpRole[result.newLevel.toString()];
-                        if (levelRole && message.guild.roles.cache.find(r => r.name === levelRole)) {
-                            const role = message.guild.roles.cache.find(r => r.name === levelRole);
-                            await message.member.roles.add(role).catch(console.error);
-
-                            const { createInfoEmbed: createLevelUpEmbed } = require('../utils/embedBuilder');
-                            const levelUpEmbed = createLevelUpEmbed('🎉 Level Up! 🎉', 
-                                `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}** and earned the **${levelRole}** role!`
-                            )
-                            .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-                            .setColor('#FFD700');
-
-                            levelUpChannel.send({ embeds: [levelUpEmbed] });
-                        } else {
-                            const levelUpEmbed = createLevelUpEmbed('🎉 Level Up! 🎉', 
-                                `Congratulations ${message.author}!\nYou've reached **Level ${result.newLevel}**!`
-                            )
-                            .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-                            .setColor('#FFD700');
-
-                            levelUpChannel.send({ embeds: [levelUpEmbed] });
-                        }
-                    }
-                }
-
-                timestamps.set(cooldownKey, now);
-            }
+        // Update bot stats
+        if (client.botState) {
+            client.botState.stats.messagesProcessed++;
+            client.botState.lastActivity = Date.now();
         }
 
-        // Command handling
-        if (!message.content.startsWith(config.prefix)) return;
+        // Check if message mentions Zolory or contains his name
+        const isMentioned = message.mentions.users.has(client.user.id) || 
+                           content.toLowerCase().includes('zolory') ||
+                           content.toLowerCase().includes('@zolory');
 
-        const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-        const commandName = args.shift().toLowerCase();
-
-        const command = client.commands.get(commandName) || 
-                       client.commands.find(cmd => cmd.data.aliases && cmd.data.aliases.includes(commandName));
-
-        if (!command) return;
-
-        // Cooldown handling
-        if (!client.cooldowns.has(command.data.name)) {
-            client.cooldowns.set(command.data.name, new Collection());
+        // Handle commands
+        if (content.startsWith(client.config.prefix)) {
+            await handleCommand(message);
+            return;
         }
 
-        const now = Date.now();
-        const timestamps = client.cooldowns.get(command.data.name);
-        const cooldownAmount = (command.data.cooldown || 3) * 1000;
-
-        if (timestamps.has(message.author.id)) {
-            const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
-
-            if (now < expirationTime) {
-                const timeLeft = (expirationTime - now) / 1000;
-                const embed = createErrorEmbed('Cooldown', `Please wait ${timeLeft.toFixed(1)} more seconds before using \`${command.data.name}\` again.`);
-                return message.reply({ embeds: [embed] });
-            }
+        // Handle natural language interactions
+        if (isMentioned || Math.random() < 0.1) { // 10% chance to respond to non-mentions
+            await handleNaturalLanguage(message);
+            return;
         }
 
-        timestamps.set(message.author.id, now);
-        setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
-
-        // Execute command
-        try {
-            await command.execute(message, args);
-        } catch (error) {
-            console.error('Command execution error:', error);
-            const embed = createErrorEmbed('Error', 'There was an error while executing this command!');
-            await message.reply({ embeds: [embed] }).catch(console.error);
+        // Handle moderation commands in natural language
+        if (await handleNaturalModeration(message)) {
+            return;
         }
-    },
+
+        // Handle game interactions
+        if (await handleGameInteraction(message)) {
+            return;
+        }
+    }
 };
+
+async function handleCommand(message) {
+    const { client, content, author, guild, channel } = message;
+    const args = content.slice(client.config.prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    const command = client.commands.get(commandName) || 
+                   client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+
+    if (!command) return;
+
+    try {
+        await command.execute(message, args);
+        client.logger.logCommand(author, commandName, guild, channel);
+    } catch (error) {
+        console.error(`Error executing command ${commandName}:`, error);
+        await message.reply("Yo, something went wrong with that command! My brain's lagging rn 😅");
+    }
+}
+
+async function handleNaturalLanguage(message) {
+    const { client, content, author, guild, channel } = message;
+    
+    // Check for rude behavior
+    const isRude = client.emotionManager.isRudeMessage(content.toLowerCase());
+    
+    if (isRude) {
+        const rudeResponse = client.emotionManager.getEmotionalResponse(content, true);
+        await message.reply(rudeResponse);
+        return;
+    }
+
+    // Generate AI response
+    try {
+        const context = {
+            mood: client.botState.currentMood,
+            user: author.displayName,
+            guild: guild?.name,
+            channel: channel?.name
+        };
+
+        const aiResponse = await client.zoloryAI.generateResponse(content, context);
+        
+        // Add emoji and GIF if appropriate
+        const emoji = client.gifManager.getMoodEmoji(client.botState.currentMood);
+        const response = `${emoji} **${author.displayName}**, ${aiResponse}`;
+        
+        await message.reply(response);
+
+        // Occasionally send a GIF
+        if (Math.random() < 0.3) {
+            const gif = await client.gifManager.getGif('default', client.botState.currentMood);
+            await message.channel.send(gif);
+        }
+
+    } catch (error) {
+        console.error('Error generating AI response:', error);
+        await message.reply("Yo, my brain's lagging rn 😅 Can you run that back?");
+    }
+}
+
+async function handleNaturalModeration(message) {
+    const { client, content, author, guild, channel } = message;
+    
+    const moderationPatterns = [
+        /(?:yo\s+)?zolory\s+(ban|kick|timeout|warn|mute)\s+(\w+)(?:\s+for\s+(\w+))?(?:\s+because\s+(.+))?/i,
+        /(?:yo\s+)?zolory\s+(ban|kick|timeout|warn|mute)\s+(\w+)(?:\s+(\w+))?(?:\s+(.+))?/i,
+        /(?:yo\s+)?zolory\s+(unban|untimeout)\s+(\w+)(?:\s+(.+))?/i
+    ];
+
+    for (const pattern of moderationPatterns) {
+        const match = content.match(pattern);
+        if (match) {
+            const [, action, target, duration, reason] = match;
+            const args = [action, target];
+            
+            if (duration && !reason) {
+                args.push(duration);
+            } else if (duration && reason) {
+                args.push(duration, reason);
+            } else if (reason) {
+                args.push(reason);
+            }
+
+            const result = await client.moderationManager.handleModerationCommand(message, args);
+            if (result.success) {
+                await message.reply(result.message);
+                if (result.embed) {
+                    await message.channel.send({ embeds: [result.embed] });
+                }
+            } else {
+                await message.reply(result.message);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+async function handleGameInteraction(message) {
+    const { client, content, author, guild, channel } = message;
+    
+    const gamePatterns = [
+        /(?:yo\s+)?zolory\s+(?:lets?\s+)?play\s+(tictactoe|hangman|trivia|rps)(?:\s+(.+))?/i,
+        /(?:yo\s+)?zolory\s+(?:wanna\s+)?play\s+(tictactoe|hangman|trivia|rps)(?:\s+(.+))?/i
+    ];
+
+    for (const pattern of gamePatterns) {
+        const match = content.match(pattern);
+        if (match) {
+            const [, gameType, options] = match;
+            const result = await client.gameManager.startGame(gameType, channel, author);
+            
+            if (result.success) {
+                await message.reply(result.message);
+            } else {
+                await message.reply(result.message);
+            }
+            return true;
+        }
+    }
+
+    // Handle game moves
+    const gameId = `${channel.id}-${author.id}`;
+    const activeGames = client.gameManager.getActiveGames();
+    const userGame = activeGames.find(([id, game]) => id.startsWith(gameId));
+    
+    if (userGame) {
+        const [gameId, game] = userGame;
+        const result = await client.gameManager.handleGameMove(gameId, author, content);
+        
+        if (result.success) {
+            await message.reply(result.message);
+            return true;
+        }
+    }
+
+    return false;
+}

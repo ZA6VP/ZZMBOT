@@ -1,25 +1,47 @@
 {
-  "name": "workspace",
+  "name": "zolory-discord-bot",
   "version": "1.0.0",
-  "description": "A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.",
-  "main": "index.js",
+  "description": "Zolory - An advanced AI Discord bot with personality, emotions, and comprehensive features",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "discord",
+    "bot",
+    "ai",
+    "zolory",
+    "chatbot"
+  ],
+  "author": "Zap",
   "license": "ISC",
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.18.0",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "cron": "^3.1.6",
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
     "ffmpeg-static": "^5.2.0",
+    "fs-extra": "^11.2.0",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.6.0",
     "mongoose": "^8.15.1",
+    "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
+    "openai": "^4.20.0",
     "opusscript": "^0.0.8",
+    "sharp": "^0.32.6",
     "spotify-web-api-node": "^5.0.2",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
     "youtube-sr": "^4.3.11",
     "ytdl-core": "^4.11.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
