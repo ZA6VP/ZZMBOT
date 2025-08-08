@@ -1,25 +1,26 @@
 {
-  "name": "workspace",
+  "name": "zolory-discord-bot",
   "version": "1.0.0",
-  "description": "A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.",
-  "main": "index.js",
+  "description": "Zolory - Advanced AI Discord Bot",
+  "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.18.0",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0",
-    "ffmpeg-static": "^5.2.0",
-    "mongoose": "^8.15.1",
-    "node-fetch": "^3.3.2",
-    "opusscript": "^0.0.8",
-    "spotify-web-api-node": "^5.0.2",
-    "youtube-sr": "^4.3.11",
-    "ytdl-core": "^4.11.5"
-  }
+    "discord.js": "^14.14.1",
+    "@google/generative-ai": "^0.2.1",
+    "axios": "^1.6.2",
+    "node-cron": "^3.0.3",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "moment": "^2.29.4",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["discord", "bot", "ai", "gemini"],
+  "author": "Zap",
+  "license": "MIT"
 }
