@@ -34,8 +34,12 @@ export class AiClient {
 
     for (const p of order) {
       const res = await this.tryProvider(p, messages);
-      if (res) return res;
+      if (res) {
+        logger.info(`AI reply from provider=${p}`, { length: res.length });
+        return res;
+      }
     }
+    logger.warn('All AI providers failed; returning null');
     return null;
   }
 

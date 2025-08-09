@@ -7,12 +7,12 @@ import { Emojis } from '../skills/gifs.js';
 import { isOwner, ZOLORI_NAME } from '../config/persona.js';
 
 const responded = new Set<string>();
+const channelBusy = new Set<string>();
 
 function isTriggeringMessage(client: Client, message: Message): boolean {
   if (message.channel.isDMBased()) return true;
   if (message.mentions.users.has(client.user!.id)) return true;
   if (message.reference?.messageId) {
-    // replying to the bot's message
     const refUserId = message.mentions.repliedUser?.id;
     if (refUserId && refUserId === client.user?.id) return true;
   }
@@ -24,10 +24,12 @@ function isTriggeringMessage(client: Client, message: Message): boolean {
 
 export function registerMessageCreate(client: Client) {
   client.on('messageCreate', async (message) => {
-    try {
-      if (message.author.bot) return;
-      if (responded.has(message.id)) return;
+    if (message.author.bot) return;
+    if (responded.has(message.id)) return;
+    if (channelBusy.has(message.channel.id)) return;
+    channelBusy.add(message.channel.id);
 
+    try {
       // tic-tac-toe move handler
       const moved = await maybeHandleTicTacToeMove(message);
       if (moved) { responded.add(message.id); return; }
@@ -72,6 +74,8 @@ export function registerMessageCreate(client: Client) {
       console.error('messageCreate handler error', err);
       await message.reply("My brain lagged, run it back.").catch(() => {});
       responded.add(message.id);
+    } finally {
+      channelBusy.delete(message.channel.id);
     }
   });
 }
