@@ -1,10 +1,7 @@
-import BadWords from 'bad-words';
 import Sentiment from 'sentiment';
 import { persona, Mood } from '../config/persona.js';
 import { AiClient, AiMessage } from './aiClient.js';
 
-// Some packages lack proper type defaults; TS config enables synthetic default imports.
-const filter = new BadWords();
 const sentiment = new Sentiment();
 
 const slang = [
