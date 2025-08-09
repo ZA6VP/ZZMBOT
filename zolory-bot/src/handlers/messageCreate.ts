@@ -32,10 +32,14 @@ export function registerMessageCreate(client: Client) {
       const modHandled = await handleModeration(message);
       if (modHandled) return;
 
-      // Game start intent
+      // Game start / Roblox
       const intent = detectIntent(message.content);
       if (intent.name === 'game.tictactoe.start') {
         await handleTicTacToeStart(message, intent.rounds);
+        return;
+      }
+      if (intent.name === 'ask.roblox') {
+        await message.reply(`I can't join Roblox, but I'm down to game here. ${Emojis.game} Say "let’s play tictactoe first to 3".`);
         return;
       }
 
@@ -52,8 +56,8 @@ export function registerMessageCreate(client: Client) {
         mood: allowSpicy ? 'spicy' : 'helpful',
       });
 
-      // Occasionally add a gif or emoji
-      const extra = Math.random() < 0.25 ? `\n${randomGif('greet')}` : '';
+      // Occasionally add a gif
+      const extra = Math.random() < 0.2 ? `\n${randomGif('greet')}` : '';
       await message.reply(reply + extra);
 
     } catch (err) {

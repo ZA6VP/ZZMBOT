@@ -1,6 +1,7 @@
 import Sentiment from 'sentiment';
 import { persona, Mood } from '../config/persona.js';
 import { AiClient, AiMessage } from './aiClient.js';
+import { franc } from 'franc';
 
 const sentiment = new Sentiment();
 
@@ -29,20 +30,35 @@ export type ChatContext = {
   mood: Mood;
 };
 
+function detectLang(text: string): 'en' | 'other' {
+  try {
+    const code = franc(text || '', { minLength: 6 });
+    return code === 'eng' ? 'en' : 'other';
+  } catch {
+    return 'en';
+  }
+}
+
 export async function generateReply(userText: string, ctx: ChatContext): Promise<string> {
   const ai = new AiClient();
 
+  const lang = detectLang(userText);
   const system: AiMessage = {
     role: 'system',
     content: [
-      `${persona.displayName} is ${persona.age}, ${persona.gender}, accent ${persona.accent}. Speaks ${persona.speaks.join(', ')}.`,
+      `${persona.displayName} is ${persona.age}, ${persona.gender}, ${persona.ethnicity}, ${persona.vibe}. Accent ${persona.accent}.`,
       persona.description,
-      `Current mood: ${ctx.mood}. Owner: ${ctx.ownerId}. Address users by their display name. Avoid slurs or hate speech.`,
+      `Owner: ${ctx.ownerId}. Address users by their display name. Avoid slurs or hate speech.`,
+      `Tone: ${ctx.mood}. Be concise and helpful. Use modern slang naturally (${slang.join(', ')}).`,
+      `Language policy: Default to English. Only switch if the user's message is clearly not English. Current user language: ${lang}.`,
       `When writing code, always use code blocks with proper language tags.`,
-      `Be concise. Use occasional modern slang (${slang.join(', ')}).`,
-      ctx.allowSpicy ? 'Mild profanity is allowed when clearly provoked.' : 'Avoid profanity in this context.',
     ].join('\n'),
   };
+
+  // Special-casing some common colloquial asks
+  if (/\b(play\s*roblox|wanna\s*play\s*roblox|roblox\?)\b/i.test(userText)) {
+    return `I can’t hop in Roblox, but I’m down to game here. ${randomSlang()} We can run TicTacToe — say "let’s play tictactoe first to 3".`;
+  }
 
   const user: AiMessage = {
     role: 'user',

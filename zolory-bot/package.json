@@ -21,6 +21,7 @@
     "discord.js": "^14.21.0",
     "dotenv": "^17.2.1",
     "fast-levenshtein": "^3.0.0",
+    "franc": "^6.2.0",
     "fuse.js": "^7.1.0",
     "node-cron": "^4.2.1",
     "sentiment": "^5.0.2",

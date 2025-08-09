@@ -8,6 +8,7 @@ export type Intent =
   | { name: 'moderation.warn'; target?: string; reason?: string }
   | { name: 'game.tictactoe.start'; rounds?: number }
   | { name: 'smalltalk.hello' }
+  | { name: 'ask.roblox' }
   | { name: 'unknown' };
 
 export function parseDurationMs(text: string): number | undefined {
@@ -24,12 +25,13 @@ export function detectIntent(raw: string): Intent {
   const text = normalize(raw);
 
   // Games
-  const gameMatch = text.match(/(play|let's play|wanna play).*tic.?tac.?toe|tictactoe|ttt/);
+  const gameMatch = text.match(/(play|let\'s play|lets play|wanna play)[^\n]*?(tic.?tac.?toe|tictactoe|ttt)/);
   if (gameMatch) {
     const roundsMatch = text.match(/first to (\d+)|best of (\d+)/);
     const num = roundsMatch ? Number(roundsMatch[1] || roundsMatch[2]) : undefined;
     return { name: 'game.tictactoe.start', rounds: num };
   }
+  if (/(play|wanna play)[^\n]*roblox|roblox\?/.test(text)) return { name: 'ask.roblox' };
 
   // Moderation intents with flexible phrasing
   if (/\b(ban|swing|yeet)\b/.test(text)) {
@@ -55,7 +57,7 @@ export function detectIntent(raw: string): Intent {
     return { name: 'moderation.warn', target: extractTarget(text), reason };
   }
 
-  if (/\b(hi|hey|hello|yo|yoo|sup|what's up)\b/.test(text)) return { name: 'smalltalk.hello' };
+  if (/\b(hi|hey|hello|yo|yoo|sup|what\'s up|whats up)\b/.test(text)) return { name: 'smalltalk.hello' };
 
   return { name: 'unknown' };
 }
