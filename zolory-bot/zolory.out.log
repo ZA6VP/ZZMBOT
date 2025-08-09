@@ -1,0 +1,6 @@
+
+> zolory-bot@0.1.0 start
+> node dist/index.js
+
+[INFO ] 2025-08-09T18:22:49.525Z Zolory is online.
+[INFO ] 2025-08-09T18:22:53.356Z SQLite initialized
