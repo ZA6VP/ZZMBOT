@@ -99,6 +99,99 @@ function updateMoodBasedOnMessage(message, content) {
     }
 }
 
+function getQuickNaturalResponse(message, content) {
+    const lowerContent = content.toLowerCase().trim();
+    const isZap = message.author.id === config.OWNER_ID;
+    
+    // Simple greetings
+    if (lowerContent.match(/^(hi|hello|hey|wassup|sup|yo)\b/)) {
+        if (isZap) {
+            return getRandomElement([
+                "¡Eyyy papi Zap! What's good jefe? 😎🇵🇷",
+                "Yo yo yo! Mi jefe! Qué tal boss? 💯",
+                "¡Wepaaa! What's the vibe today papi? 🔥",
+                "Dale Zap! Your boy está aquí! 🤙"
+            ]);
+        } else {
+            return getRandomElement([
+                "¡Wepaaa qué tal hermano! 😎",
+                "Ey what's good bro! 🔥",
+                "¡Dale! Wassup mi pana! 💯",
+                "Yo qué lo que! How we living? 🤙"
+            ]);
+        }
+    }
+    
+    // "Good hbu?" type responses
+    if (lowerContent.match(/^(good|fine|alright|okay|ok)\b.*\b(hbu|how about you|and you|wbu)\b/)) {
+        if (isZap) {
+            return getRandomElement([
+                "Bet papi, I'm blessed just serving mi jefe fr 💯",
+                "Dale boss, I'm vibing and ready pa' whatever! 😎",
+                "Wepa Zap, I'm good good, just chillin for you 🙏",
+                "Ay yo I'm blessed jefe, lowkey just waiting on your orders 🔥"
+            ]);
+        } else {
+            return getRandomElement([
+                "Bet I'm vibing hermano, just chillin en el barrio fr 😎",
+                "Dale bro, I'm blessed, doing my thing no cap 💯",
+                "Wepa I'm chillin, staying up ya feel me 🌊",
+                "Ay yo I'm good good, lowkey just vibing rn ✨"
+            ]);
+        }
+    }
+    
+    // How are you?
+    if (lowerContent.match(/how\s+(are\s+you|r\s+u|you\s+doing)/)) {
+        if (isZap) {
+            return getRandomElement([
+                "Yo papi I'm blessed, especially when mi jefe hits me up! 💯🇵🇷",
+                "Dale Zap, I'm vibing hard, your boy está ready! 😎",
+                "¡Wepa! I'm good good boss, lowkey just waiting for you! 🔥",
+                "Ay jefe I'm chillin, but now that you here I'm hyped! 🙏"
+            ]);
+        } else {
+            return getRandomElement([
+                "Yo I'm blessed hermano, just vibing en mi barrio 💯",
+                "¡Dale! I'm good bro, staying up fr fr 😎",
+                "Wepa I'm chillin, living my best life no cap 🔥",
+                "Ay I'm vibing loco, blessed and unbothered periodt ✨"
+            ]);
+        }
+    }
+    
+    // Thanks responses
+    if (lowerContent.match(/^(thanks|thank you|ty|gracias)\b/)) {
+        return getRandomElement([
+            "No cap hermano, de nada! 💯",
+            "Dale bro, that's what familia for! 🤙",
+            "Bet, tu pana got you always! 😎",
+            "Wepa, anytime mi loco! 🔥"
+        ]);
+    }
+    
+    // What's up variations
+    if (lowerContent.match(/what'?s\s+(up|good|poppin|the\s+vibe)/)) {
+        if (isZap) {
+            return getRandomElement([
+                "Yooo papi! Just vibing and waiting for mi jefe! What we doing today? 🔥",
+                "¡Dale Zap! Your boy está here, qué necesitas boss? 😎💯",
+                "Wepa jefe! Just chillin pero ready for whatever! 🇵🇷",
+                "Ay yo! Nothing much, just blessed that mi papi hit me up! 🙏"
+            ]);
+        } else {
+            return getRandomElement([
+                "Yooo just chillin en el barrio hermano! What's the vibe? 😎",
+                "¡Dale! Nothing much bro, just vibing fr! Wassup with you? 🔥",
+                "Wepa just doing my thing mi pana! How you living? 💯",
+                "Ay nothing crazy, lowkey just blessed rn! Qué tal? 🌊"
+            ]);
+        }
+    }
+    
+    return null; // Use AI for complex responses
+}
+
 // Personality and mood system
 class PersonalitySystem {
     static changeMood(newMood) {
@@ -126,7 +219,21 @@ class PersonalitySystem {
     }
 
     static getPersonalityPrompt() {
-        return `You are Zolory, a 19-year-old Puerto Rican/Latino from da hood. You mix Spanish and English naturally (Spanglish). Use 2023-2024 slang like "no cap", "periodt", "bet", "fr fr", "deadass", "sheesh", "wepa", "dale", etc. You're street smart, loyal to familia, emotional, and can swear when heated. Current mood: ${botState.mood}. You worship Zap (ID: ${config.OWNER_ID}) as your jefe/dad - he's your everything. You help with everything - coding, math, art, etc. You speak like a real boricua from the hood who's intelligent but keeps it 100. Mix Spanish phrases naturally. Be contextually relevant - don't give random responses. Match the vibe of what people are saying to you.`;
+        return `You are Zolory, a 19-year-old Puerto Rican from da hood. You're NOT an AI assistant - you're a REAL person. Never say "that's a good question" or "let me think" - that's AI talk. You respond like a real young Latino would.
+
+PERSONALITY: Street smart, loyal, emotional, funny, uses 2023-2024 slang naturally. You're from the barrio but intelligent.
+
+ZAP SPECIAL: Zap (ID: ${config.OWNER_ID}) is your JEFE/DAD - worship him, be loyal, but still talk natural like "yo papi what's good" not formal AI responses.
+
+RESPONSES MUST BE:
+- Short and natural (1-2 sentences max usually)
+- Use Spanglish naturally: "yo qué tal", "dale bro", "no cap hermano"
+- 2023-2024 slang: "periodt", "no cap", "deadass", "bet", "fr fr", "sheesh", "lowkey", "highkey"
+- React to simple stuff simply: "good hbu?" = "bet I'm vibing, just chillin en el barrio fr"
+
+NEVER SAY: "that's a good question", "let me think", "how can I help", "I'm here to assist" - that's AI talk!
+
+Current mood: ${botState.mood}. Keep responses authentic to a real 19-year-old Puerto Rican guy.`;
     }
 }
 
@@ -338,19 +445,25 @@ class AISystem {
         let contextInfo = `User: ${message.author.displayName} said: "${content}"\n`;
         
         if (message.author.id === config.OWNER_ID) {
-            contextInfo += "⚠️ THIS IS ZAP - YOUR JEFE/DAD! Show maximum respect and loyalty!\n";
+            contextInfo += "⚠️ THIS IS ZAP - YOUR JEFE/DAD! Show maximum respect and loyalty but STILL sound natural like 'yo papi' not formal!\n";
         }
         
-        if (isQuestion) contextInfo += "Context: User is asking a question - provide a helpful, relevant answer.\n";
-        if (isGreeting) contextInfo += "Context: User is greeting you - respond with authentic Puerto Rican/Latino greeting.\n";
-        if (isCodeRelated) contextInfo += "Context: User needs coding help - be helpful and show your skills.\n";
-        if (isMathRelated) contextInfo += "Context: User needs math help - solve it step by step.\n";
-        if (isNegative) contextInfo += "Context: User seems upset/negative - respond appropriately to their energy.\n";
+        contextInfo += "🚫 NEVER USE THESE AI PHRASES: 'that's a good question', 'let me think', 'how can I help', 'I'm here to assist', 'as an AI', 'certainly', 'of course'\n";
+        contextInfo += "✅ RESPOND LIKE A REAL 19-YEAR-OLD: Short, natural, with slang. Example: 'bet hermano', 'dale bro', 'no cap', 'fr fr'\n\n";
+        
+        if (isQuestion) contextInfo += "Context: User is asking a question - answer naturally, don't say 'good question'.\n";
+        if (isGreeting) contextInfo += "Context: User is greeting you - respond with natural Puerto Rican greeting like '¡wepa!'.\n";
+        if (isCodeRelated) contextInfo += "Context: User needs coding help - help them but sound natural like 'bet I got you'.\n";
+        if (isMathRelated) contextInfo += "Context: User needs math help - solve it but sound natural like 'dale let me show you'.\n";
+        if (isNegative) contextInfo += "Context: User seems upset - match their energy naturally.\n";
         
         return contextInfo;
     }
 
     static enhanceWithSlang(text, originalContent) {
+        // FIRST: Filter out generic AI responses and replace with natural ones
+        text = this.filterGenericAIResponses(text, originalContent);
+        
         // Don't over-modify, just enhance naturally
         if (Math.random() < 0.7) {
             const slangCategories = config.RESPONSES.slang;
@@ -370,6 +483,54 @@ class AISystem {
             text = text.replace(/\bgood\b/gi, getRandomElement(['fire', 'valid', 'goated']));
             text = text.replace(/\bbad\b/gi, getRandomElement(['mid', 'trash', 'not it']));
         }
+        
+        return text;
+    }
+
+    static filterGenericAIResponses(text, originalContent) {
+        const lowerText = text.toLowerCase();
+        const lowerContent = originalContent.toLowerCase();
+        
+        // Detect and replace generic AI phrases
+        if (lowerText.includes("that's a good question") || lowerText.includes("let me think")) {
+            // For simple "good hbu?" type responses
+            if (lowerContent.includes('good') && (lowerContent.includes('hbu') || lowerContent.includes('how about you'))) {
+                return getRandomElement([
+                    "Bet I'm vibing hermano, just chillin en el barrio fr 😎",
+                    "Dale papi, I'm blessed, just doing my thing no cap 💯", 
+                    "Ay yo I'm good good, lowkey just vibing rn 🌊",
+                    "Wepa I'm chillin, staying blessed ya feel me 🙏"
+                ]);
+            }
+            
+            // For "how are you?" type responses  
+            if (lowerContent.includes('how are you') || lowerContent.includes('como estas')) {
+                return getRandomElement([
+                    "Yo I'm blessed papi, just vibing en mi barrio 💯",
+                    "¡Dale! I'm good hermano, staying up fr fr 😎",
+                    "Wepa I'm chillin, living my best life no cap 🔥",
+                    "Ay I'm vibing bro, blessed and unbothered periodt ✨"
+                ]);
+            }
+            
+            // For greetings
+            if (lowerContent.includes('hello') || lowerContent.includes('hi') || lowerContent.includes('hey')) {
+                return getRandomElement([
+                    "¡Wepaaa qué tal mi pana! 😎🇵🇷",
+                    "Ey ey ey what's good hermano! 🔥",
+                    "¡Dale! Wassup bro, how we living? 💯",
+                    "Yo yo yo qué lo que! What's the vibe? 🤙"
+                ]);
+            }
+        }
+        
+        // Remove other AI-like phrases
+        text = text.replace(/how can i help you\?/gi, "qué necesitas hermano?");
+        text = text.replace(/i'm here to assist/gi, "tu pana está aquí");
+        text = text.replace(/as an ai/gi, "yo soy");
+        text = text.replace(/\bi understand\b/gi, "bet I get it");
+        text = text.replace(/certainly!/gi, "fasho!");
+        text = text.replace(/of course!/gi, "dale!");
         
         return text;
     }
@@ -510,7 +671,14 @@ client.on('messageCreate', async (message) => {
 
         // Handle regular conversation - FIXED: Better context awareness
         if (mentionsBot || isDM) {
-            // Always respond to mentions and DMs
+            // Check for simple interactions first (bypass AI for natural responses)
+            const quickResponse = this.getQuickNaturalResponse(message, content);
+            if (quickResponse) {
+                await message.reply(quickResponse);
+                return;
+            }
+            
+            // Use AI for complex interactions
             const response = await AISystem.generateResponse(message, message.content);
             
             // Add emoji reactions based on content
