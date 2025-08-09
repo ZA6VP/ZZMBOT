@@ -23,9 +23,14 @@ export class AiClient {
   }
 
   async chat(messages: AiMessage[]): Promise<string | null> {
-    // Preferred provider
-    const order: Provider[] = this.provider ? [this.provider] : [];
-    if (!order.length) order.push('custom', 'groq', 'gemini', 'replicate');
+    const defaults: Provider[] = ['custom', 'groq', 'gemini', 'replicate'];
+    let order: Provider[];
+    if (this.provider) {
+      // Keep fallbacks while prioritizing chosen provider
+      order = [this.provider, ...defaults.filter(p => p !== this.provider)];
+    } else {
+      order = defaults;
+    }
 
     for (const p of order) {
       const res = await this.tryProvider(p, messages);
