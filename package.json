@@ -1,25 +1,43 @@
 {
-  "name": "workspace",
-  "version": "1.0.0",
-  "description": "A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.",
-  "main": "index.js",
+  "name": "zolory-discord-bot",
+  "version": "3.0.0-A3-CHIP",
+  "description": "🇵🇷 Zolory - The most advanced AI Discord bot with voice synthesis and A3 chip technology",
+  "main": "bot.js",
   "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "discord",
+    "bot",
+    "ai",
+    "voice",
+    "puerto-rican",
+    "spanish",
+    "gaming"
+  ],
+  "author": "Zap",
+  "license": "MIT",
   "dependencies": {
-    "@discordjs/opus": "^0.10.0",
+    "@discordjs/opus": "^0.9.0",
     "@discordjs/voice": "^0.18.0",
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0",
+    "@google/generative-ai": "^0.2.1",
+    "axios": "^1.6.2",
+    "chalk": "^4.1.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
     "ffmpeg-static": "^5.2.0",
-    "mongoose": "^8.15.1",
-    "node-fetch": "^3.3.2",
-    "opusscript": "^0.0.8",
-    "spotify-web-api-node": "^5.0.2",
-    "youtube-sr": "^4.3.11",
-    "ytdl-core": "^4.11.5"
+    "fs": "^0.0.1-security",
+    "libsodium-wrappers": "^0.7.11",
+    "moment": "^2.29.4",
+    "node-cron": "^3.0.3",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
