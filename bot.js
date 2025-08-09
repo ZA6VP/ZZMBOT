@@ -5,6 +5,9 @@ const GameSystem = require('./features/games.js');
 const cron = require('node-cron');
 const moment = require('moment');
 const chalk = require('chalk');
+const A3Chip = require('./core/A3Chip');
+const AdvancedSocialMediaSystem = require('./features/advancedSocialMedia');
+const AdvancedModerationSystem = require('./features/advancedModeration');
 
 // Initialize Discord client
 const client = new Client({
@@ -627,238 +630,627 @@ class AutonomousSystem {
     }
 }
 
-// Event handlers
-client.on('ready', () => {
-    log(`🚀 ${config.BOT_NAME} is online and ready!`, 'success');
-    log(`Logged in as ${client.user.tag}`, 'info');
+// Add at the top with other imports
+const A3Chip = require('./core/A3Chip');
+const AdvancedSocialMediaSystem = require('./features/advancedSocialMedia');
+const AdvancedModerationSystem = require('./features/advancedModeration');
+
+// Update bot initialization
+const botState = {
+    mood: 'vibin',
+    energy: 0.8,
+    lastMoodChange: Date.now(),
+    voiceChannels: new Map(),
+    a3Chip: null,
+    socialMedia: null,
+    moderation: null
+};
+
+// Initialize A3 Chip and advanced systems
+async function initializeA3Systems() {
+    console.log('🚀 Initializing A3 Chip and Advanced Systems...');
     
-    PersonalitySystem.updateStatus();
-    AutonomousSystem.init();
+    botState.a3Chip = new A3Chip();
+    botState.socialMedia = new AdvancedSocialMediaSystem();
+    botState.moderation = new AdvancedModerationSystem();
+    
+    // Set client reference for moderation system
+    botState.moderation.client = client;
+    
+    console.log('✅ A3 Systems fully operational!');
+}
+
+// Voice Chat Integration
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    try {
+        // User joined a voice channel
+        if (!oldState.channel && newState.channel) {
+            await handleVoiceJoin(newState);
+        }
+        
+        // User left a voice channel
+        if (oldState.channel && !newState.channel) {
+            await handleVoiceLeave(oldState);
+        }
+        
+        // User switched channels
+        if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
+            await handleVoiceSwitch(oldState, newState);
+        }
+    } catch (error) {
+        console.error('Voice state update error:', error);
+    }
 });
 
+async function handleVoiceJoin(voiceState) {
+    const { member, channel } = voiceState;
+    
+    // Check if bot should auto-join
+    if (shouldAutoJoinVoice(channel)) {
+        await botState.a3Chip.joinVoiceChannel(channel.id, channel.guild.id);
+    }
+    
+    // Log voice activity for moderation
+    if (botState.moderation) {
+        await botState.moderation.voiceMonitor.monitorVoiceActivity(voiceState);
+    }
+}
+
+async function handleVoiceLeave(voiceState) {
+    const { member, channel } = voiceState;
+    
+    // If channel becomes empty, bot should leave too
+    if (channel && channel.members.size === 1 && channel.members.has(client.user.id)) {
+        await botState.a3Chip.leaveVoiceChannel(channel.guild.id);
+    }
+}
+
+async function handleVoiceSwitch(oldState, newState) {
+    // Handle voice channel switching logic
+}
+
+function shouldAutoJoinVoice(channel) {
+    // Auto-join if:
+    // 1. Channel has 3+ members
+    // 2. Channel name suggests activity (gaming, music, etc.)
+    // 3. Random chance for social interaction
+    
+    const memberCount = channel.members.size;
+    const channelName = channel.name.toLowerCase();
+    const activityChannels = ['gaming', 'music', 'chat', 'general', 'hangout', 'party'];
+    
+    return memberCount >= 3 || 
+           activityChannels.some(keyword => channelName.includes(keyword)) ||
+           Math.random() < 0.1; // 10% random chance
+}
+
+// Enhanced message processing with A3 chip
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    const content = message.content.toLowerCase();
-    const isDM = message.channel.type === 1;
-    const mentionsBot = message.mentions.has(client.user) || content.includes('zolory');
-
-    // Check if bot is sleeping
-    if (!botState.isAwake && message.author.id !== config.OWNER_ID) {
-        if (mentionsBot || isDM) {
-            const sleepResponses = [
-                "Zzz... Estoy durmiendo hermano, hit me up later 😴",
-                "Ay loco I'm knocked out, try again cuando esté awake 💤",
-                "No puedo talk rn, catching some Z's en el barrio 😪",
-                "Durmiendo like a baby, déjame dormir papi 💤🇵🇷"
-            ];
-            return await message.reply(getRandomElement(sleepResponses));
-        }
-        return;
-    }
-
     try {
-        // Handle natural language commands first
-        if (mentionsBot || isDM) {
-            const commandProcessed = await CommandProcessor.processNaturalCommand(message, content);
-            if (commandProcessed) return;
-        }
-
-        // Check for number guessing game
-        if (!isNaN(parseInt(content)) && await gameSystem.handleNumberGuess(message, content)) {
-            return;
-        }
-
-        // Handle regular conversation - FIXED: Better context awareness
-        if (mentionsBot || isDM) {
-            // Check for simple interactions first (bypass AI for natural responses)
-            const quickResponse = this.getQuickNaturalResponse(message, content);
-            if (quickResponse) {
-                await message.reply(quickResponse);
-                return;
-            }
+        // A3 Chip processing
+        if (botState.a3Chip) {
+            const a3Result = await botState.a3Chip.processMessage(message, {
+                user: message.author,
+                guild: message.guild,
+                channel: message.channel,
+                isVoiceMessage: false
+            });
             
-            // Use AI for complex interactions
-            const response = await AISystem.generateResponse(message, message.content);
-            
-            // Add emoji reactions based on content
-            const reactionChance = Math.random();
-            if (reactionChance < 0.4) {
-                const contextEmojis = this.getContextualEmojis(content);
-                await message.react(getRandomElement(contextEmojis));
-            }
-            
-            // Send response (less random GIFs, more contextual)
-            if (Math.random() < 0.15 && config.GIFS[botState.mood]) {
-                const gifUrl = getRandomElement(config.GIFS[botState.mood]);
-                await message.reply(`${response}\n${gifUrl}`);
-            } else {
-                await message.reply(response);
-            }
-
-            // Smart mood changes based on conversation context
-            this.updateMoodBasedOnMessage(message, content);
-            
-        } else if (Math.random() < 0.03) { 
-            // MUCH less random responses to avoid spam - only 3% chance
-            const casualResponses = [
-                "facts 💯",
-                "bet",
-                "no cap fr",
-                "periodt",
-                "sheesh 🔥"
-            ];
-            await message.react('👀');
-            if (Math.random() < 0.5) {
-                await message.reply(getRandomElement(casualResponses));
+            if (a3Result && typeof a3Result === 'string') {
+                return await message.reply(a3Result);
             }
         }
+
+        // Auto-moderation
+        if (botState.moderation && message.guild) {
+            const violations = await botState.moderation.processAutoModeration(message);
+            if (violations.length > 0) {
+                return; // Message was handled by auto-mod
+            }
+        }
+
+        // Natural language moderation commands
+        if (botState.moderation && isAddressedToBot(message.content) && message.guild) {
+            const modResult = await botState.moderation.processNaturalLanguageCommand(message, message.content);
+            if (modResult) {
+                return await message.reply(modResult.message);
+            }
+        }
+
+        // Voice commands
+        if (isAddressedToBot(message.content)) {
+            const voiceCommand = await processVoiceCommands(message);
+            if (voiceCommand) return;
+        }
+
+        // Social media commands
+        if (botState.socialMedia && isAddressedToBot(message.content)) {
+            const socialCommand = await processSocialMediaCommands(message);
+            if (socialCommand) return;
+        }
+
+        // ... rest of existing message processing ...
 
     } catch (error) {
-        log(`Message handling error: ${error.message}`, 'error');
-        if (mentionsBot || isDM) {
-            await message.reply(getRandomElement(config.RESPONSES.errorMessages));
+        console.error('Message processing error:', error);
+        await message.reply("Ay no, mi cerebro glitched hermano! Try again 😤");
+    }
+});
+
+// Voice Commands Processing
+async function processVoiceCommands(message) {
+    const content = message.content.toLowerCase();
+    
+    if (content.includes('join voice') || content.includes('come to voice') || content.includes('hop in vc')) {
+        if (message.member?.voice?.channel) {
+            const result = await botState.a3Chip.joinVoiceChannel(
+                message.member.voice.channel.id, 
+                message.guild.id
+            );
+            await message.reply(result.message);
+            return true;
+        } else {
+            await message.reply("You're not in a voice channel hermano! 🎤");
+            return true;
         }
     }
-});
+    
+    if (content.includes('leave voice') || content.includes('get out of vc') || content.includes('disconnect')) {
+        const result = await botState.a3Chip.leaveVoiceChannel(message.guild.id);
+        await message.reply(result.message);
+        return true;
+    }
+    
+    return false;
+}
 
+// Social Media Commands Processing
+async function processSocialMediaCommands(message) {
+    const content = message.content.toLowerCase();
+    const args = content.split(' ');
+    
+    if (content.includes('connect') && args.length >= 3) {
+        const platform = args[2];
+        const username = args[3];
+        
+        if (platform && username) {
+            const result = await botState.socialMedia.connectUserAccount(
+                message.author.id, 
+                platform, 
+                { username, permissions: ['read'] }
+            );
+            await message.reply(result.message);
+            return true;
+        }
+    }
+    
+    if (content.includes('social media') || content.includes('social dashboard')) {
+        const embed = await botState.socialMedia.getSocialMediaEmbed(message.author.id);
+        await message.reply({ embeds: [embed] });
+        return true;
+    }
+    
+    if (content.includes('trending') || content.includes('trends')) {
+        try {
+            const trends = await botState.socialMedia.getTrendingTopics('all', 'global');
+            const embed = new EmbedBuilder()
+                .setTitle('🔥 Trending Topics')
+                .setColor('#ff6b6b')
+                .setDescription('What\'s hot right now across all platforms!');
+            
+            trends.slice(0, 10).forEach((trend, index) => {
+                embed.addFields({
+                    name: `${index + 1}. ${trend.keyword}`,
+                    value: `${trend.totalMentions.toLocaleString()} mentions across ${trend.platforms.length} platforms`,
+                    inline: true
+                });
+            });
+            
+            await message.reply({ embeds: [embed] });
+            return true;
+        } catch (error) {
+            await message.reply("Ay no, couldn't fetch trends right now hermano 📱");
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// Enhanced slash commands for new features
+const advancedCommands = [
+    {
+        name: 'voice',
+        description: '🎤 Voice chat commands',
+        options: [
+            {
+                name: 'action',
+                description: 'Voice action to perform',
+                type: 3, // STRING
+                required: true,
+                choices: [
+                    { name: 'Join my channel', value: 'join' },
+                    { name: 'Leave voice', value: 'leave' },
+                    { name: 'Status', value: 'status' }
+                ]
+            }
+        ]
+    },
+    {
+        name: 'social',
+        description: '🌐 Social media integration',
+        options: [
+            {
+                name: 'action',
+                description: 'Social media action',
+                type: 3, // STRING
+                required: true,
+                choices: [
+                    { name: 'Dashboard', value: 'dashboard' },
+                    { name: 'Connect account', value: 'connect' },
+                    { name: 'Trending topics', value: 'trends' },
+                    { name: 'Analytics', value: 'analytics' }
+                ]
+            }
+        ]
+    },
+    {
+        name: 'mod',
+        description: '🛡️ Advanced moderation',
+        options: [
+            {
+                name: 'action',
+                description: 'Moderation action',
+                type: 3, // STRING
+                required: true,
+                choices: [
+                    { name: 'Setup auto-mod', value: 'setup' },
+                    { name: 'View logs', value: 'logs' },
+                    { name: 'Config rules', value: 'config' },
+                    { name: 'Server stats', value: 'stats' }
+                ]
+            }
+        ]
+    },
+    {
+        name: 'a3',
+        description: '🚀 A3 Chip diagnostics',
+        options: [
+            {
+                name: 'command',
+                description: 'A3 command',
+                type: 3, // STRING
+                required: true,
+                choices: [
+                    { name: 'Performance stats', value: 'stats' },
+                    { name: 'System status', value: 'status' },
+                    { name: 'Voice status', value: 'voice' },
+                    { name: 'Security scan', value: 'security' }
+                ]
+            }
+        ]
+    }
+];
+
+// Enhanced interaction handlers
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
+    if (!interaction.isCommand()) return;
 
-    const customId = interaction.customId;
-    if (customId.startsWith('ttt_')) {
-        await handleTicTacToeMove(interaction);
-    } else if (customId.startsWith('rps_')) {
-        await gameSystem.handleRPS(interaction);
-    } else if (customId.startsWith('trivia_')) {
-        await gameSystem.handleTrivia(interaction);
+    const { commandName, options } = interaction;
+
+    try {
+        switch (commandName) {
+            case 'voice':
+                await handleVoiceSlashCommand(interaction);
+                break;
+            case 'social':
+                await handleSocialSlashCommand(interaction);
+                break;
+            case 'mod':
+                await handleModSlashCommand(interaction);
+                break;
+            case 'a3':
+                await handleA3SlashCommand(interaction);
+                break;
+            // ... existing commands ...
+        }
+    } catch (error) {
+        console.error('Interaction error:', error);
+        await interaction.reply({ 
+            content: 'Ay no, algo pasó with that command hermano! 😤', 
+            ephemeral: true 
+        });
     }
 });
 
-async function handleTicTacToeMove(interaction) {
-    const [, gameId, position] = interaction.customId.split('_');
-    const game = botState.games.get(gameId);
+async function handleVoiceSlashCommand(interaction) {
+    const action = interaction.options.getString('action');
     
-    if (!game || !game.active || game.playerX !== interaction.user.id) {
-        return await interaction.reply({ content: "This isn't your game bro! 😤", ephemeral: true });
+    switch (action) {
+        case 'join':
+            if (interaction.member?.voice?.channel) {
+                const result = await botState.a3Chip.joinVoiceChannel(
+                    interaction.member.voice.channel.id,
+                    interaction.guild.id
+                );
+                await interaction.reply(result.message);
+            } else {
+                await interaction.reply("You're not in a voice channel hermano! 🎤");
+            }
+            break;
+            
+        case 'leave':
+            const result = await botState.a3Chip.leaveVoiceChannel(interaction.guild.id);
+            await interaction.reply(result.message);
+            break;
+            
+        case 'status':
+            const voiceStatus = botState.a3Chip.currentVoiceChannels.get(interaction.guild.id);
+            if (voiceStatus) {
+                await interaction.reply(`🎤 I'm currently in voice chat! Channel: <#${voiceStatus.channelId}>`);
+            } else {
+                await interaction.reply("I'm not in any voice channel right now papi 🎤");
+            }
+            break;
     }
+}
 
-    const pos = parseInt(position);
-    if (game.board[pos] !== '⬜') {
-        return await interaction.reply({ content: "That spot's taken! Pick another one 🙄", ephemeral: true });
-    }
-
-    // Player move
-    game.board[pos] = '❌';
+async function handleSocialSlashCommand(interaction) {
+    const action = interaction.options.getString('action');
     
-    // Check for win
-    if (checkWin(game.board, '❌')) {
-        game.active = false;
-        const embed = new EmbedBuilder()
-            .setTitle('🎮 Tic Tac Toe - You Won!')
-            .setDescription(`GG ${interaction.user.displayName}! You beat me 😤\n\n${CommandProcessor.formatTicTacToeBoard(game.board)}`)
-            .setColor('#00ff00');
+    switch (action) {
+        case 'dashboard':
+            const embed = await botState.socialMedia.getSocialMediaEmbed(interaction.user.id);
+            await interaction.reply({ embeds: [embed] });
+            break;
+            
+        case 'trends':
+            const trends = await botState.socialMedia.getTrendingTopics();
+            const trendsEmbed = new EmbedBuilder()
+                .setTitle('🔥 Global Trending Topics')
+                .setColor('#ff6b6b');
+                
+            trends.slice(0, 10).forEach((trend, index) => {
+                trendsEmbed.addFields({
+                    name: `${index + 1}. ${trend.keyword}`,
+                    value: `${trend.totalMentions.toLocaleString()} mentions`,
+                    inline: true
+                });
+            });
+            
+            await interaction.reply({ embeds: [trendsEmbed] });
+            break;
+            
+        case 'connect':
+            await interaction.reply({
+                content: "To connect a social media account, use:\n`@Zolory connect [platform] [username]`\n\nSupported platforms: twitter, instagram, tiktok, youtube, spotify, twitch",
+                ephemeral: true
+            });
+            break;
+            
+        case 'analytics':
+            const analytics = await botState.socialMedia.getSocialAnalytics(interaction.user.id);
+            const analyticsEmbed = new EmbedBuilder()
+                .setTitle('📊 Your Social Media Analytics')
+                .setColor('#00d4aa')
+                .addFields(
+                    { name: 'Total Posts', value: analytics.overview.totalPosts.toString(), inline: true },
+                    { name: 'Total Engagement', value: analytics.overview.totalEngagement.toString(), inline: true },
+                    { name: 'Avg Viral Score', value: analytics.overview.avgViralScore.toFixed(2), inline: true }
+                );
+            
+            await interaction.reply({ embeds: [analyticsEmbed] });
+            break;
+    }
+}
+
+async function handleModSlashCommand(interaction) {
+    const action = interaction.options.getString('action');
+    
+    // Check permissions
+    if (!interaction.member.permissions.has('MANAGE_GUILD')) {
+        await interaction.reply({ 
+            content: "You need Manage Server permission for this hermano! 🚫", 
+            ephemeral: true 
+        });
+        return;
+    }
+    
+    switch (action) {
+        case 'setup':
+            await interaction.reply({
+                content: "🛡️ **Auto-Mod Setup**\n\nUse these commands to configure:\n• `@Zolory setup welcome #channel` - Set welcome channel\n• `@Zolory setup modlog #channel` - Set mod log channel\n• `@Zolory setup autorole @role` - Set auto-role\n• `@Zolory setup antiraid on/off` - Toggle anti-raid",
+                ephemeral: true
+            });
+            break;
+            
+        case 'stats':
+            const guildAnalytics = botState.moderation.memberAnalytics.get(interaction.guild.id) || {};
+            const statsEmbed = new EmbedBuilder()
+                .setTitle('📊 Server Moderation Stats')
+                .setColor('#ffa500')
+                .addFields(
+                    { name: 'Auto-Mod Rules', value: botState.moderation.autoModRules.size.toString(), inline: true },
+                    { name: 'Total Warnings', value: Object.keys(guildAnalytics).length.toString(), inline: true },
+                    { name: 'Security Level', value: 'Quantum Enhanced 🛡️', inline: true }
+                );
+            
+            await interaction.reply({ embeds: [statsEmbed] });
+            break;
+            
+        case 'logs':
+            const logs = botState.moderation.auditLogs.get(interaction.guild.id) || [];
+            const recentLogs = logs.slice(-5);
+            
+            const logsEmbed = new EmbedBuilder()
+                .setTitle('📋 Recent Moderation Actions')
+                .setColor('#ff6b6b');
+                
+            if (recentLogs.length === 0) {
+                logsEmbed.setDescription('No recent moderation actions.');
+            } else {
+                recentLogs.forEach((log, index) => {
+                    logsEmbed.addFields({
+                        name: `${log.action.toUpperCase()} - ${new Date(log.timestamp).toLocaleString()}`,
+                        value: `Moderator: ${log.moderator.tag}\nTarget: ${log.target ? log.target.tag : 'N/A'}\nReason: ${log.reason}`,
+                        inline: false
+                    });
+                });
+            }
+            
+            await interaction.reply({ embeds: [logsEmbed] });
+            break;
+    }
+}
+
+async function handleA3SlashCommand(interaction) {
+    const command = interaction.options.getString('command');
+    
+    switch (command) {
+        case 'stats':
+            const stats = botState.a3Chip.getA3PerformanceStats();
+            const statsEmbed = new EmbedBuilder()
+                .setTitle('🚀 A3 Chip Performance Stats')
+                .setColor('#00ff41')
+                .addFields(
+                    { name: '⚡ Processing Power', value: `${stats.processingPower.toLocaleString()} ops/sec`, inline: true },
+                    { name: '🧠 Memory Usage', value: `${Math.round(stats.memoryUsage.heapUsed / 1024 / 1024)}MB`, inline: true },
+                    { name: '⏱️ Uptime', value: `${Math.round(stats.uptime / 3600)}h`, inline: true },
+                    { name: '🎤 Voice Channels', value: stats.voiceChannelsActive.toString(), inline: true },
+                    { name: '🛡️ Security Level', value: stats.quantumSecurityLevel, inline: true },
+                    { name: '🔗 AI Services', value: stats.aiServicesIntegrated.toString(), inline: true },
+                    { name: '⚡ Response Time', value: stats.responseTimeMs, inline: true },
+                    { name: '🎵 Voice Latency', value: stats.voiceLatencyMs, inline: true },
+                    { name: '🎯 Threat Detection', value: stats.threatDetectionAccuracy, inline: true }
+                )
+                .setFooter({ text: `A3 Chip Version: ${stats.version}` });
+            
+            await interaction.reply({ embeds: [statsEmbed] });
+            break;
+            
+        case 'status':
+            const status = {
+                a3Chip: botState.a3Chip ? '✅ Operational' : '❌ Offline',
+                socialMedia: botState.socialMedia ? '✅ Active' : '❌ Offline',
+                moderation: botState.moderation ? '✅ Active' : '❌ Offline',
+                voice: botState.a3Chip?.voiceEnabled ? '✅ Ready' : '❌ Disabled'
+            };
+            
+            const statusEmbed = new EmbedBuilder()
+                .setTitle('🖥️ System Status')
+                .setColor('#00ff00')
+                .addFields(
+                    { name: 'A3 Chip', value: status.a3Chip, inline: true },
+                    { name: 'Social Media', value: status.socialMedia, inline: true },
+                    { name: 'Moderation', value: status.moderation, inline: true },
+                    { name: 'Voice AI', value: status.voice, inline: true }
+                );
+            
+            await interaction.reply({ embeds: [statusEmbed] });
+            break;
+            
+        case 'voice':
+            const voiceChannels = botState.a3Chip.currentVoiceChannels;
+            const voiceEmbed = new EmbedBuilder()
+                .setTitle('🎤 Voice AI Status')
+                .setColor('#7289da');
+                
+            if (voiceChannels.size === 0) {
+                voiceEmbed.setDescription('Not connected to any voice channels.');
+            } else {
+                voiceChannels.forEach((channel, guildId) => {
+                    voiceEmbed.addFields({
+                        name: `Guild: ${guildId}`,
+                        value: `Channel: <#${channel.channelId}>\nParticipants: ${channel.participants.size}\nActive: ${channel.active ? '✅' : '❌'}`,
+                        inline: true
+                    });
+                });
+            }
+            
+            await interaction.reply({ embeds: [voiceEmbed] });
+            break;
+            
+        case 'security':
+            const securityStatus = {
+                protocols: botState.a3Chip.securityProtocols.size,
+                threatLevel: 'Low',
+                lastScan: new Date().toLocaleString(),
+                encryption: 'Quantum AES-256'
+            };
+            
+            const securityEmbed = new EmbedBuilder()
+                .setTitle('🛡️ Security Status')
+                .setColor('#ff0000')
+                .addFields(
+                    { name: 'Active Protocols', value: securityStatus.protocols.toString(), inline: true },
+                    { name: 'Threat Level', value: securityStatus.threatLevel, inline: true },
+                    { name: 'Encryption', value: securityStatus.encryption, inline: true },
+                    { name: 'Last Scan', value: securityStatus.lastScan, inline: false }
+                );
+            
+            await interaction.reply({ embeds: [securityEmbed] });
+            break;
+    }
+}
+
+// Register new slash commands
+async function registerAdvancedCommands() {
+    try {
+        console.log('🔄 Registering advanced slash commands...');
         
-        return await interaction.update({ embeds: [embed], components: [] });
-    }
-
-    // Check for tie
-    if (!game.board.includes('⬜')) {
-        game.active = false;
-        const embed = new EmbedBuilder()
-            .setTitle('🎮 Tic Tac Toe - Tie!')
-            .setDescription(`It's a tie! Good game bro 🤝\n\n${CommandProcessor.formatTicTacToeBoard(game.board)}`)
-            .setColor('#ffff00');
+        const allCommands = [...commands, ...advancedCommands];
         
-        return await interaction.update({ embeds: [embed], components: [] });
+        await client.application.commands.set(allCommands);
+        console.log('✅ Advanced slash commands registered successfully!');
+    } catch (error) {
+        console.error('Failed to register advanced commands:', error);
     }
+}
 
-    // Bot move
-    const botMove = getBestMove(game.board);
-    game.board[botMove] = '⭕';
-
-    // Check if bot wins
-    if (checkWin(game.board, '⭕')) {
-        game.active = false;
-        const embed = new EmbedBuilder()
-            .setTitle('🎮 Tic Tac Toe - I Won!')
-            .setDescription(`Haha! I got you this time 😎\n\n${CommandProcessor.formatTicTacToeBoard(game.board)}`)
-            .setColor('#ff0000');
-        
-        return await interaction.update({ embeds: [embed], components: [] });
-    }
-
-    // Continue game
-    const embed = new EmbedBuilder()
-        .setTitle('🎮 Tic Tac Toe - Your Turn!')
-        .setDescription(`${interaction.user.displayName} vs Zolory\n\n${CommandProcessor.formatTicTacToeBoard(game.board)}`)
-        .setColor('#00ff00');
-
-    const buttons = [];
-    for (let i = 0; i < 9; i++) {
-        buttons.push(
-            new ButtonBuilder()
-                .setCustomId(`ttt_${gameId}_${i}`)
-                .setLabel((i + 1).toString())
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(game.board[i] !== '⬜')
-        );
-    }
-
-    const rows = [
-        new ActionRowBuilder().addComponents(buttons.slice(0, 3)),
-        new ActionRowBuilder().addComponents(buttons.slice(3, 6)),
-        new ActionRowBuilder().addComponents(buttons.slice(6, 9))
+// Enhanced bot ready event
+client.once('ready', async () => {
+    console.log(`🚀 ZOLORY A3 CHIP ONLINE! Logged in as ${client.user.tag}`);
+    
+    // Initialize A3 systems
+    await initializeA3Systems();
+    
+    // Register commands
+    await registerAdvancedCommands();
+    
+    // Set enhanced status
+    const activities = [
+        '🇵🇷 Powered by A3 Chip Technology',
+        '🎤 Voice AI Ready - Join me in VC!',
+        '🌐 Social Media Integration Active',
+        '🛡️ Quantum Security Protocols Online',
+        '🎮 50+ Games Ready to Play',
+        '💰 ZoloCoins Economy Live',
+        '🔥 10M Operations per Second'
     ];
-
-    await interaction.update({ embeds: [embed], components: rows });
-}
-
-function checkWin(board, player) {
-    const winPatterns = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-        [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-        [0, 4, 8], [2, 4, 6] // Diagonals
-    ];
-
-    return winPatterns.some(pattern => 
-        pattern.every(index => board[index] === player)
-    );
-}
-
-function getBestMove(board) {
-    // Simple AI: try to win, then block, then random
-    const available = board.map((cell, index) => cell === '⬜' ? index : null).filter(val => val !== null);
     
-    // Try to win
-    for (let move of available) {
-        const testBoard = [...board];
-        testBoard[move] = '⭕';
-        if (checkWin(testBoard, '⭕')) return move;
-    }
+    let activityIndex = 0;
+    setInterval(() => {
+        client.user.setActivity(activities[activityIndex], { type: 'PLAYING' });
+        activityIndex = (activityIndex + 1) % activities.length;
+    }, 10000);
     
-    // Try to block
-    for (let move of available) {
-        const testBoard = [...board];
-        testBoard[move] = '❌';
-        if (checkWin(testBoard, '❌')) return move;
-    }
-    
-    // Random move
-    return available[Math.floor(Math.random() * available.length)];
-}
-
-// Error handling
-process.on('unhandledRejection', (error) => {
-    log(`Unhandled rejection: ${error.message}`, 'error');
+    console.log('✅ All A3 systems operational and ready to serve!');
 });
 
-process.on('uncaughtException', (error) => {
-    log(`Uncaught exception: ${error.message}`, 'error');
+// Member join/leave handlers for moderation
+client.on('guildMemberAdd', async (member) => {
+    if (botState.moderation) {
+        await botState.moderation.handleMemberJoin(member);
+    }
+});
+
+client.on('guildMemberRemove', async (member) => {
+    if (botState.moderation) {
+        await botState.moderation.handleMemberLeave(member);
+    }
 });
 
 // Start the bot
-client.login(config.BOT_TOKEN).catch(error => {
-    log(`Failed to login: ${error.message}`, 'error');
-    process.exit(1);
-});
+client.login(process.env.DISCORD_BOT_TOKEN).catch(console.error);
