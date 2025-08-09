@@ -7,6 +7,9 @@ export type Intent =
   | { name: 'moderation.timeout'; target?: string; durationMs?: number; reason?: string }
   | { name: 'moderation.warn'; target?: string; reason?: string }
   | { name: 'game.tictactoe.start'; rounds?: number }
+  | { name: 'voice.join'; channel?: string }
+  | { name: 'voice.leave' }
+  | { name: 'voice.say'; text: string }
   | { name: 'smalltalk.hello' }
   | { name: 'ask.roblox' }
   | { name: 'unknown' };
@@ -24,6 +27,15 @@ export function parseDurationMs(text: string): number | undefined {
 export function detectIntent(raw: string): Intent {
   const text = normalize(raw);
 
+  // Voice
+  if (/(join|pull up to|hop in).*(vc|voice|call)/.test(text)) {
+    const m = text.match(/(?:in|to)\s+([\w-]+)/);
+    return { name: 'voice.join', channel: m?.[1] };
+  }
+  if (/(leave|dip|bounce).*(vc|voice|call)/.test(text)) return { name: 'voice.leave' };
+  const sayMatch = raw.match(/(?:say|speak|tell them)\s+(.{3,})/i);
+  if (sayMatch) return { name: 'voice.say', text: sayMatch[1].trim() };
+
   // Games
   const gameMatch = text.match(/(play|let\'s play|lets play|wanna play)[^\n]*?(tic.?tac.?toe|tictactoe|ttt)/);
   if (gameMatch) {
@@ -33,7 +45,7 @@ export function detectIntent(raw: string): Intent {
   }
   if (/(play|wanna play)[^\n]*roblox|roblox\?/.test(text)) return { name: 'ask.roblox' };
 
-  // Moderation intents with flexible phrasing
+  // Moderation intents
   if (/\b(ban|swing|yeet)\b/.test(text)) {
     const durationMs = parseDurationMs(text);
     const becauseIdx = text.indexOf(' because ');
@@ -63,10 +75,8 @@ export function detectIntent(raw: string): Intent {
 }
 
 export function extractTarget(text: string): string | undefined {
-  // Prefer mentions
   const mention = text.match(/<@!?([0-9]+)>/);
   if (mention) return mention[1];
-  // Try after keywords like ban/kick/warn
   const m = text.match(/(?:ban|kick|warn|timeout|mute)\s+([^\s]+(?:\s+[^\s]+){0,2})/);
   if (m) return m[1];
   return undefined;

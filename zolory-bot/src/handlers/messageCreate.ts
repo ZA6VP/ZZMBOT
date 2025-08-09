@@ -7,10 +7,13 @@ import { Emojis } from '../skills/gifs.js';
 import { isOwner, ZOLORI_NAME } from '../config/persona.js';
 import { ProcessedMessages } from '../storage/db.js';
 import { getRecent, pushMessage } from '../storage/memory.js';
+import { handleVoiceJoin, handleVoiceLeave, handleVoiceSay } from './voice.js';
 
 const responded = new Set<string>();
 const channelBusy = new Set<string>();
 const channelThrottle = new Map<string, number>();
+
+const freeTalk = (process.env.FREETALK_CHANNELS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 function isTriggeringMessage(client: Client, message: Message): boolean {
   if (message.channel.isDMBased()) return true;
@@ -18,6 +21,9 @@ function isTriggeringMessage(client: Client, message: Message): boolean {
   const content = message.content.trim().toLowerCase();
   const name = ZOLORI_NAME.toLowerCase();
   if (content.startsWith(name) || content.startsWith(`yo ${name}`) || content.startsWith(`yoo ${name}`)) return true;
+  // free talk channels
+  const chName = (message.channel as any).name?.toLowerCase?.();
+  if (chName && freeTalk.includes(chName)) return true;
   return false;
 }
 
@@ -28,7 +34,7 @@ export function registerMessageCreate(client: Client) {
     if (!ProcessedMessages.claim(message.id)) return; // already processed elsewhere
 
     const last = channelThrottle.get(message.channel.id) || 0;
-    if (Date.now() - last < 1500) return;
+    if (Date.now() - last < 1200) return;
 
     if (channelBusy.has(message.channel.id)) return;
     channelBusy.add(message.channel.id);
@@ -43,11 +49,17 @@ export function registerMessageCreate(client: Client) {
       // push user message into memory
       pushMessage(message.channel.id, 'user', message.content);
 
-      // First try moderation intents
+      // Voice intents
+      const intent = detectIntent(message.content);
+      if (intent.name === 'voice.join') { await handleVoiceJoin(message, intent.channel); responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
+      if (intent.name === 'voice.leave') { await handleVoiceLeave(message); responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
+      if (intent.name === 'voice.say') { await handleVoiceSay(message, intent.text); responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
+
+      // Moderation intents
       const modHandled = await handleModeration(message);
       if (modHandled) { responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
 
-      const intent = detectIntent(message.content);
+      // Game start / Roblox
       if (intent.name === 'game.tictactoe.start') {
         await handleTicTacToeStart(message, intent.rounds);
         responded.add(message.id);

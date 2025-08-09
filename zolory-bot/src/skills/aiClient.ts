@@ -25,11 +25,21 @@ export class AiClient {
   async chat(messages: AiMessage[]): Promise<string | null> {
     const defaults: Provider[] = ['custom', 'groq', 'gemini', 'replicate'];
     let order: Provider[];
-    if (this.provider) {
-      // Keep fallbacks while prioritizing chosen provider
-      order = [this.provider, ...defaults.filter(p => p !== this.provider)];
-    } else {
-      order = defaults;
+    if (this.provider) order = [this.provider, ...defaults.filter(p => p !== this.provider)];
+    else order = defaults;
+
+    const parallel = process.env.AI_PARALLEL === '1';
+    if (parallel) {
+      // Launch all available providers, return the first non-null
+      const tasks = order.map(p => this.tryProvider(p, messages).then(res => ({ p, res })).catch(() => ({ p, res: null })));
+      for await (const { p, res } of tasks) {
+        if (res) {
+          logger.info(`AI reply from provider=${p}`, { length: res.length, parallel: true });
+          return res;
+        }
+      }
+      logger.warn('All AI providers failed in parallel mode');
+      return null;
     }
 
     for (const p of order) {
@@ -72,7 +82,6 @@ export class AiClient {
       }
       return null;
     } catch (e) {
-      logger.warn(`AI provider ${provider} failed`, e);
       return null;
     }
   }
