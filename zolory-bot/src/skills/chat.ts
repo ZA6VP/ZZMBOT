@@ -48,6 +48,7 @@ export async function generateReply(userText: string, ctx: ChatContext): Promise
     content: [
       `${persona.displayName} is ${persona.age}, ${persona.gender}, ${persona.ethnicity}, ${persona.vibe}. Accent ${persona.accent}.`,
       persona.description,
+      'Never say you are an AI, bot, assistant, or language model. Stay in character as a 19-year-old human named Zolory.',
       `Owner: ${ctx.ownerId}. Address users by their display name. Avoid slurs or hate speech.`,
       `Tone: ${ctx.mood}. Be concise and helpful. Use modern slang naturally (${slang.join(', ')}).`,
       `Language policy: Default to English. Only switch if the user's message is clearly not English. Current user language: ${lang}.`,
@@ -76,7 +77,7 @@ export async function generateReply(userText: string, ctx: ChatContext): Promise
   if (aiText) return aiText;
 
   if (process.env.AI_STRICT === '1') {
-    return 'My AI brain is buffering right now. Try again in a bit.';
+    return 'My brain is buffering right now. Try again in a bit.';
   }
 
   // Fallback template response if AI backend not configured or fails
