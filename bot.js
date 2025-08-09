@@ -11,13 +11,37 @@ const A3Chip = require('./core/A3Chip');
 const AdvancedSocialMediaSystem = require('./features/advancedSocialMedia');
 const AdvancedModerationSystem = require('./features/advancedModeration');
 
-// ===== DEMO MODE CHECK =====
-const DEMO_MODE = !process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_BOT_TOKEN === 'DEMO_TOKEN_REPLACE_WITH_YOUR_ACTUAL_TOKEN';
+// ===== DISCORD TOKEN DETECTION =====
+function getDiscordToken() {
+    // Check multiple possible environment variable names for Discord token
+    const possibleTokenNames = [
+        'DISCORD_BOT_TOKEN',
+        'DISCORD_TOKEN', 
+        'BOT_TOKEN',
+        'DISCORD_BOT_KEY',
+        'DISCORD_API_KEY'
+    ];
+    
+    for (const tokenName of possibleTokenNames) {
+        const token = process.env[tokenName];
+        if (token && token !== 'DEMO_TOKEN_REPLACE_WITH_YOUR_ACTUAL_TOKEN' && token.length > 50) {
+            console.log(chalk.green(`🔑 Found Discord token in ${tokenName}!`));
+            return token;
+        }
+    }
+    
+    return null;
+}
+
+const DISCORD_TOKEN = getDiscordToken();
+const DEMO_MODE = !DISCORD_TOKEN;
 
 if (DEMO_MODE) {
-    console.log(chalk.yellow('🎭 RUNNING IN DEMO MODE - SHOWCASING ZOLORY A3 CHIP CAPABILITIES'));
-    console.log(chalk.yellow('⚠️  To run with real Discord: Set DISCORD_BOT_TOKEN in .env file'));
-    console.log(chalk.yellow('📋 Get token from: https://discord.com/developers/applications\n'));
+    console.log(chalk.yellow('🎭 RUNNING IN DEMO MODE - No valid Discord token found'));
+    console.log(chalk.yellow('⚠️  Checked environment variables: DISCORD_BOT_TOKEN, DISCORD_TOKEN, BOT_TOKEN, DISCORD_BOT_KEY, DISCORD_API_KEY'));
+    console.log(chalk.yellow('📋 Make sure your Discord token is in one of these environment variables\n'));
+} else {
+    console.log(chalk.green('🔑 Discord token found! Ready to connect to Discord!'));
 }
 
 // ===== BOT INITIALIZATION =====
@@ -322,7 +346,7 @@ if (DEMO_MODE) {
     });
 
     // Start the bot
-    client.login(process.env.DISCORD_BOT_TOKEN).catch(error => {
+    client.login(DISCORD_TOKEN).catch(error => {
         console.error(chalk.red('❌ Failed to login to Discord:'), error.message);
         console.log(chalk.yellow('💡 Make sure you have a valid DISCORD_BOT_TOKEN in your .env file'));
         console.log(chalk.yellow('📋 Get one from: https://discord.com/developers/applications'));
