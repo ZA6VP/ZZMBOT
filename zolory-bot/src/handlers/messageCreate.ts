@@ -6,6 +6,7 @@ import { generateReply } from '../skills/chat.js';
 import { Emojis } from '../skills/gifs.js';
 import { isOwner, ZOLORI_NAME } from '../config/persona.js';
 import { ProcessedMessages } from '../storage/db.js';
+import { getRecent, pushMessage } from '../storage/memory.js';
 
 const responded = new Set<string>();
 const channelBusy = new Set<string>();
@@ -26,7 +27,6 @@ export function registerMessageCreate(client: Client) {
     if (responded.has(message.id)) return;
     if (!ProcessedMessages.claim(message.id)) return; // already processed elsewhere
 
-    // Simple per-channel throttle to avoid accidental multi-replies
     const last = channelThrottle.get(message.channel.id) || 0;
     if (Date.now() - last < 1500) return;
 
@@ -34,18 +34,19 @@ export function registerMessageCreate(client: Client) {
     channelBusy.add(message.channel.id);
 
     try {
-      // tic-tac-toe move handler
       const moved = await maybeHandleTicTacToeMove(message);
       if (moved) { responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
 
       const triggered = isTriggeringMessage(client, message);
       if (!triggered) return;
 
+      // push user message into memory
+      pushMessage(message.channel.id, 'user', message.content);
+
       // First try moderation intents
       const modHandled = await handleModeration(message);
       if (modHandled) { responded.add(message.id); channelThrottle.set(message.channel.id, Date.now()); return; }
 
-      // Game start / Roblox
       const intent = detectIntent(message.content);
       if (intent.name === 'game.tictactoe.start') {
         await handleTicTacToeStart(message, intent.rounds);
@@ -60,7 +61,8 @@ export function registerMessageCreate(client: Client) {
         return;
       }
 
-      // Chat response (AI-driven)
+      // Chat response (AI-driven) with typing indicator and short memory
+      await message.channel.sendTyping();
       const allowSpicy = !isOwner(message.author.id) && /\b(fuck|stfu|dumb|idiot|trash|suck)\b/i.test(message.content);
       const display = message.member?.displayName || message.author.globalName || message.author.username;
       const reply = await generateReply(message.content, {
@@ -71,9 +73,11 @@ export function registerMessageCreate(client: Client) {
         ownerId: message.client.application?.owner?.id || process.env.OWNER_ID || '1219957467690172517',
         allowSpicy,
         mood: allowSpicy ? 'spicy' : 'helpful',
+        recentMessages: getRecent(message.channel.id),
       });
 
       await message.reply(reply);
+      pushMessage(message.channel.id, 'bot', reply);
       responded.add(message.id);
       channelThrottle.set(message.channel.id, Date.now());
 

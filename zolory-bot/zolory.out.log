@@ -2,33 +2,5 @@
 > zolory-bot@0.1.0 start
 > node dist/index.js
 
-[INFO ] 2025-08-09T18:06:56.127Z Zolory is online.
-[INFO ] 2025-08-09T18:07:04.499Z SQLite initialized
-[INFO ] 2025-08-09T18:07:05.030Z AI reply from provider=gemini
-  → {
-  "length": 67
-}
-[INFO ] 2025-08-09T18:07:18.488Z AI reply from provider=gemini
-  → {
-  "length": 58
-}
-[INFO ] 2025-08-09T18:07:31.776Z AI reply from provider=gemini
-  → {
-  "length": 24
-}
-[INFO ] 2025-08-09T18:08:03.768Z AI reply from provider=gemini
-  → {
-  "length": 57
-}
-[INFO ] 2025-08-09T18:08:14.734Z AI reply from provider=gemini
-  → {
-  "length": 61
-}
-[INFO ] 2025-08-09T18:08:58.527Z AI reply from provider=gemini
-  → {
-  "length": 24
-}
-[INFO ] 2025-08-09T18:10:52.098Z AI reply from provider=gemini
-  → {
-  "length": 41
-}
+[INFO ] 2025-08-09T18:11:53.876Z Zolory is online.
+[INFO ] 2025-08-09T18:11:56.442Z SQLite initialized
