@@ -1,26 +1,43 @@
 {
   "name": "zolory-discord-bot",
-  "version": "1.0.0",
-  "description": "Zolory - Advanced AI Discord Bot",
+  "version": "3.0.0-A3-CHIP",
+  "description": "🇵🇷 Zolory - The most advanced AI Discord bot with voice synthesis and A3 chip technology",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "dev": "nodemon bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "discord",
+    "bot",
+    "ai",
+    "voice",
+    "puerto-rican",
+    "spanish",
+    "gaming"
+  ],
+  "author": "Zap",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1",
+    "@discordjs/opus": "^0.9.0",
+    "@discordjs/voice": "^0.18.0",
     "@google/generative-ai": "^0.2.1",
     "axios": "^1.6.2",
-    "node-cron": "^3.0.3",
+    "chalk": "^4.1.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "ffmpeg-static": "^5.2.0",
     "fs": "^0.0.1-security",
-    "path": "^0.12.7",
+    "libsodium-wrappers": "^0.7.11",
     "moment": "^2.29.4",
-    "chalk": "^4.1.2"
+    "node-cron": "^3.0.3",
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
-  "keywords": ["discord", "bot", "ai", "gemini"],
-  "author": "Zap",
-  "license": "MIT"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
