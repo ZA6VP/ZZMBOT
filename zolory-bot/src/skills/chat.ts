@@ -75,12 +75,15 @@ export async function generateReply(userText: string, ctx: ChatContext): Promise
   const aiText = await ai.chat([system, user]);
   if (aiText) return aiText;
 
+  if (process.env.AI_STRICT === '1') {
+    return 'My AI brain is buffering right now. Try again in a bit.';
+  }
+
   // Fallback template response if AI backend not configured or fails
   const s = sentiment.analyze(userText);
   const negativity = s.score < 0;
 
   if (negativity && ctx.allowSpicy) {
-    // playful roast without slurs
     return `${ctx.userDisplayName}, you woke up and chose lag today. Chill, bro — I still got you. ${randomSlang()}`;
   }
 
