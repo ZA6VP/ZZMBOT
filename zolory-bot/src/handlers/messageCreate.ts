@@ -5,6 +5,7 @@ import { handleTicTacToeStart, maybeHandleTicTacToeMove } from '../commands/game
 import { generateReply } from '../skills/chat.js';
 import { Emojis } from '../skills/gifs.js';
 import { isOwner, ZOLORI_NAME } from '../config/persona.js';
+import { ProcessedMessages } from '../storage/db.js';
 
 const responded = new Set<string>();
 const channelBusy = new Set<string>();
@@ -26,6 +27,7 @@ export function registerMessageCreate(client: Client) {
   client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     if (responded.has(message.id)) return;
+    if (!ProcessedMessages.claim(message.id)) return; // already processed elsewhere
     if (channelBusy.has(message.channel.id)) return;
     channelBusy.add(message.channel.id);
 

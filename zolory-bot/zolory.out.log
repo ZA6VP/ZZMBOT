@@ -2,8 +2,4 @@
 > zolory-bot@0.1.0 start
 > node dist/index.js
 
-[INFO ] 2025-08-09T17:55:11.514Z Zolory is online.
-[INFO ] 2025-08-09T17:55:28.294Z AI reply from provider=groq
-  → {
-  "length": 258
-}
+[INFO ] 2025-08-09T17:58:31.526Z Zolory is online.

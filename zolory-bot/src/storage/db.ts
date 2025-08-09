@@ -70,6 +70,11 @@ function migrate(database: Database.Database) {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS processed_messages (
+      message_id TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL
+    );
   `);
 }
 
@@ -178,5 +183,17 @@ export const GameSessions = {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     } as GameSession;
+  },
+};
+
+export const ProcessedMessages = {
+  claim(messageId: string): boolean {
+    try {
+      const stmt = getDb().prepare('INSERT INTO processed_messages (message_id, created_at) VALUES (?, ?)');
+      stmt.run(messageId, Date.now());
+      return true;
+    } catch {
+      return false; // duplicate
+    }
   },
 };
