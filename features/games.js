@@ -47,15 +47,15 @@ class GameSystem {
         
         switch (result) {
             case 'win':
-                resultText = `You won! 😤 Lucky shot bro`;
+                resultText = `¡Wepa you won! 😤 Lucky shot hermano, no cap`;
                 color = '#00ff00';
                 break;
             case 'lose':
-                resultText = `I won! 😎 Better luck next time`;
+                resultText = `¡Dale! I won! 😎 Better luck next time papi`;
                 color = '#ff0000';
                 break;
             case 'tie':
-                resultText = `It's a tie! 🤝 Great minds think alike`;
+                resultText = `¡Ay! It's a tie! 🤝 Great minds think alike mi loco`;
                 color = '#ffff00';
                 break;
         }
@@ -145,7 +145,7 @@ class GameSystem {
         const game = this.activeGames.get(gameId);
         
         if (!game || game.player !== interaction.user.id) {
-            return await interaction.reply({ content: "This isn't your trivia! 😤", ephemeral: true });
+            return await interaction.reply({ content: "Ey loco, this isn't your trivia! 😤", ephemeral: true });
         }
 
         const isCorrect = parseInt(answerIndex) === game.question.correct;
@@ -155,8 +155,8 @@ class GameSystem {
             .setTitle('🧠 Trivia Result!')
             .setDescription(
                 isCorrect 
-                    ? `✅ Correct! Nice one bro! 😎\n\n**Answer:** ${correctAnswer}`
-                    : `❌ Wrong! The correct answer was: **${correctAnswer}**\n\nDon't worry, you'll get it next time! 💪`
+                    ? `✅ ¡Wepa! Correct! Nice one hermano! 😎🇵🇷\n\n**Answer:** ${correctAnswer}`
+                    : `❌ ¡Ay no! Wrong! The correct answer was: **${correctAnswer}**\n\nDon't worry papi, you'll get it next time! 💪`
             )
             .setColor(isCorrect ? '#00ff00' : '#ff0000');
 

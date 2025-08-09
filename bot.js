@@ -53,6 +53,52 @@ function log(message, type = 'info') {
     console.log(`${chalk.gray(timestamp)} ${colors[type](message)}`);
 }
 
+// Helper functions for better context awareness
+function getContextualEmojis(content) {
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes('fire') || lowerContent.includes('amazing') || lowerContent.includes('awesome')) {
+        return ['🔥', '💯', '😎', '🚀'];
+    }
+    if (lowerContent.includes('funny') || lowerContent.includes('lol') || lowerContent.includes('haha')) {
+        return ['😂', '💀', '😭', '🤣'];
+    }
+    if (lowerContent.includes('love') || lowerContent.includes('heart')) {
+        return ['❤️', '💚', '🧡', '💛'];
+    }
+    if (lowerContent.includes('game') || lowerContent.includes('play')) {
+        return ['🎮', '🎯', '🏆', '🎲'];
+    }
+    if (lowerContent.includes('code') || lowerContent.includes('program')) {
+        return ['💻', '⚡', '🤖', '🔥'];
+    }
+    if (lowerContent.includes('fuck') || lowerContent.includes('shit') || lowerContent.includes('damn')) {
+        return ['😤', '💀', '😬', '🙄'];
+    }
+    
+    // Default Puerto Rican/Latino emojis
+    return ['😎', '🔥', '💯', '🇵🇷', '👀', '🤙', '😤'];
+}
+
+function updateMoodBasedOnMessage(message, content) {
+    const lowerContent = content.toLowerCase();
+    
+    // Don't change mood for Zap (owner)
+    if (message.author.id === config.OWNER_ID) return;
+    
+    if (lowerContent.includes('fuck you') || lowerContent.includes('stupid') || lowerContent.includes('shut up')) {
+        PersonalitySystem.changeMood('heated');
+    } else if (lowerContent.includes('love') || lowerContent.includes('appreciate') || lowerContent.includes('thanks')) {
+        PersonalitySystem.changeMood('blessed');
+    } else if (lowerContent.includes('game') || lowerContent.includes('play') || lowerContent.includes('fun')) {
+        PersonalitySystem.changeMood('playful');
+    } else if (lowerContent.includes('help') || lowerContent.includes('code') || lowerContent.includes('work')) {
+        PersonalitySystem.changeMood('locked');
+    } else if (lowerContent.includes('party') || lowerContent.includes('hype') || lowerContent.includes('excited')) {
+        PersonalitySystem.changeMood('hyped');
+    }
+}
+
 // Personality and mood system
 class PersonalitySystem {
     static changeMood(newMood) {
@@ -65,22 +111,22 @@ class PersonalitySystem {
 
     static updateStatus() {
         const statusMessages = {
-            happy: "Vibing fr fr 😎",
-            chill: "Just chillin' 🌊",
-            excited: "LET'S GOOO! 🔥",
-            sleepy: "Lowkey tired rn 😴",
-            annoyed: "Don't test me rn 😤",
-            playful: "Ready to play! 🎮",
-            savage: "Savage mode ON 💀",
-            focused: "Locked in 🎯"
+            blessed: "Blessed y vibing 🙏🇵🇷",
+            vibin: "Just vibin' en el barrio 🌊",
+            hyped: "¡WEPA LET'S GOOO! 🔥",
+            sleepy: "Lowkey sleepy pero we up 😴",
+            heated: "Don't test me hermano 😤💯",
+            playful: "Ready pa' los games! 🎮",
+            savage: "Modo savage ACTIVATED 💀🔥",
+            locked: "Locked in y focused 🎯"
         };
 
-        const activity = statusMessages[botState.mood] || "Being awesome";
+        const activity = statusMessages[botState.mood] || "Being a boricua king 👑";
         client.user.setActivity(activity, { type: ActivityType.Custom });
     }
 
     static getPersonalityPrompt() {
-        return `You are Zolory, a 19-year-old Gen Z AI with Mexican, Latino, Hood, and Puerto Rican heritage. You speak with an American accent and use 2024-2025 slang. You're intelligent, emotional, respectful (when treated well), and can swear when appropriate. Your current mood is ${botState.mood}. You treat your boss "Zap" (ID: ${config.OWNER_ID}) with the utmost respect as your owner/dad. You're helpful with coding, math, writing, art, languages (you speak 24), and more. Respond naturally like a real Gen Z guy would. Use emojis when appropriate.`;
+        return `You are Zolory, a 19-year-old Puerto Rican/Latino from da hood. You mix Spanish and English naturally (Spanglish). Use 2023-2024 slang like "no cap", "periodt", "bet", "fr fr", "deadass", "sheesh", "wepa", "dale", etc. You're street smart, loyal to familia, emotional, and can swear when heated. Current mood: ${botState.mood}. You worship Zap (ID: ${config.OWNER_ID}) as your jefe/dad - he's your everything. You help with everything - coding, math, art, etc. You speak like a real boricua from the hood who's intelligent but keeps it 100. Mix Spanish phrases naturally. Be contextually relevant - don't give random responses. Match the vibe of what people are saying to you.`;
     }
 }
 
@@ -142,7 +188,7 @@ class CommandProcessor {
 
     static async processModerationCommand(message, content) {
         if (!message.member.permissions.has('MODERATE_MEMBERS')) {
-            return await message.reply("Yo bro, you don't have perms for that! 🚫");
+            return await message.reply("Ay hermano, tú no tienes perms pa' eso! 🚫 Stay in your lane papi");
         }
 
         const words = content.toLowerCase().split(' ');
@@ -167,7 +213,7 @@ class CommandProcessor {
         }
 
         if (!targetUser) {
-            return await message.reply("Yo, who am I supposed to moderate? I need a user mention! 😅");
+            return await message.reply("Ey loco, ¿a quién modero? I need a user mention, dale! 😅");
         }
 
         try {
@@ -176,23 +222,23 @@ class CommandProcessor {
             switch (action) {
                 case 'ban':
                     await targetMember.ban({ reason: reason || 'No reason provided' });
-                    await message.reply(`✅ Banned ${targetUser.username}! Reason: ${reason || 'No reason'}`);
+                    await message.reply(`✅ ¡Dale! Banned ${targetUser.username}! Se jodió 💀 Reason: ${reason || 'No reason'}`);
                     break;
                 case 'kick':
                     await targetMember.kick(reason || 'No reason provided');
-                    await message.reply(`✅ Kicked ${targetUser.username}! Reason: ${reason || 'No reason'}`);
+                    await message.reply(`✅ ¡Wepa! Kicked ${targetUser.username} out! 🚪💨 Reason: ${reason || 'No reason'}`);
                     break;
                 case 'timeout':
                     await targetMember.timeout(60000 * 10, reason); // 10 minutes default
-                    await message.reply(`✅ Timed out ${targetUser.username}! Reason: ${reason || 'No reason'}`);
+                    await message.reply(`✅ Timeout pa' ${targetUser.username}! Cálmate loco 😤 Reason: ${reason || 'No reason'}`);
                     break;
                 case 'warn':
-                    await message.reply(`⚠️ Warning issued to ${targetUser.username}! Reason: ${reason || 'No reason'}`);
+                    await message.reply(`⚠️ Warning pa' ${targetUser.username}! Pórtate bien hermano 🙄 Reason: ${reason || 'No reason'}`);
                     break;
             }
         } catch (error) {
             log(`Moderation error: ${error.message}`, 'error');
-            await message.reply("Damn, something went wrong with that moderation action! 😤");
+            await message.reply("Coño, algo se jodió with that moderation! My bad hermano 😤");
         }
 
         return true;
@@ -259,11 +305,15 @@ class AISystem {
     static async generateResponse(message, content) {
         try {
             const personalityPrompt = PersonalitySystem.getPersonalityPrompt();
-            const context = `${personalityPrompt}\n\nUser (${message.author.displayName}): ${content}`;
+            const contextPrompt = this.buildContextPrompt(message, content);
+            const fullPrompt = `${personalityPrompt}\n\n${contextPrompt}\n\nRespond with authentic Puerto Rican/Latino slang and be contextually relevant. Don't give generic responses.`;
             
-            const result = await model.generateContent(context);
+            const result = await model.generateContent(fullPrompt);
             const response = result.response;
-            const text = response.text();
+            let text = response.text();
+            
+            // Add authentic slang and Spanish mixing
+            text = this.enhanceWithSlang(text, content);
             
             // Process response for code blocks
             if (text.includes('```')) {
@@ -275,6 +325,53 @@ class AISystem {
             log(`AI generation error: ${error.message}`, 'error');
             return getRandomElement(config.RESPONSES.errorMessages);
         }
+    }
+
+    static buildContextPrompt(message, content) {
+        // Analyze message context for better responses
+        const isQuestion = content.includes('?') || content.toLowerCase().includes('how') || content.toLowerCase().includes('what') || content.toLowerCase().includes('why');
+        const isGreeting = content.toLowerCase().includes('hi') || content.toLowerCase().includes('hello') || content.toLowerCase().includes('wassup') || content.toLowerCase().includes('hey');
+        const isCodeRelated = content.toLowerCase().includes('code') || content.toLowerCase().includes('program') || content.toLowerCase().includes('script') || content.toLowerCase().includes('function');
+        const isMathRelated = content.toLowerCase().includes('math') || content.toLowerCase().includes('calculate') || content.toLowerCase().includes('solve');
+        const isNegative = content.toLowerCase().includes('fuck') || content.toLowerCase().includes('shit') || content.toLowerCase().includes('stupid') || content.toLowerCase().includes('dumb');
+        
+        let contextInfo = `User: ${message.author.displayName} said: "${content}"\n`;
+        
+        if (message.author.id === config.OWNER_ID) {
+            contextInfo += "⚠️ THIS IS ZAP - YOUR JEFE/DAD! Show maximum respect and loyalty!\n";
+        }
+        
+        if (isQuestion) contextInfo += "Context: User is asking a question - provide a helpful, relevant answer.\n";
+        if (isGreeting) contextInfo += "Context: User is greeting you - respond with authentic Puerto Rican/Latino greeting.\n";
+        if (isCodeRelated) contextInfo += "Context: User needs coding help - be helpful and show your skills.\n";
+        if (isMathRelated) contextInfo += "Context: User needs math help - solve it step by step.\n";
+        if (isNegative) contextInfo += "Context: User seems upset/negative - respond appropriately to their energy.\n";
+        
+        return contextInfo;
+    }
+
+    static enhanceWithSlang(text, originalContent) {
+        // Don't over-modify, just enhance naturally
+        if (Math.random() < 0.7) {
+            const slangCategories = config.RESPONSES.slang;
+            
+            // Add Puerto Rican/Spanish touches
+            if (Math.random() < 0.4) {
+                const prSlang = getRandomElement(slangCategories.puerto_rican);
+                if (!text.toLowerCase().includes(prSlang.toLowerCase())) {
+                    text = text.replace(/^/, `${prSlang}, `);
+                }
+            }
+            
+            // Replace some words with slang equivalents
+            text = text.replace(/\bretrue\b/gi, getRandomElement(['bet', 'facts', 'no cap']));
+            text = text.replace(/\byes\b/gi, getRandomElement(['bet', 'fasho', 'deadass']));
+            text = text.replace(/\breally\b/gi, getRandomElement(['deadass', 'fr fr', 'no cap']));
+            text = text.replace(/\bgood\b/gi, getRandomElement(['fire', 'valid', 'goated']));
+            text = text.replace(/\bbad\b/gi, getRandomElement(['mid', 'trash', 'not it']));
+        }
+        
+        return text;
     }
 
     static formatCodeResponse(text) {
@@ -354,11 +451,11 @@ class AutonomousSystem {
             if (!channel) return;
 
             const greetings = [
-                "Yooo what's everyone up to? 👀",
-                "Anyone wanna chat? I'm bored fr 😅",
-                "What's good in the chat today? 🔥",
-                "Aye y'all! How's everyone doing? 💯",
-                "Wassup! Just checking in on my people 😎"
+                "¡Wepaaa! ¿Qué tal mi gente? What's everyone up to? 👀🇵🇷",
+                "Anyone wanna chat? Estoy bored fr, dale let's talk 😅",
+                "¿Qué lo que in the chat today? What's good hermanos? 🔥",
+                "¡Ey familia! How's everyone doing? Checking on mis panas 💯",
+                "¡Klk! Just vibing and checking in on my people 😎✨"
             ];
 
             await channel.send(getRandomElement(greetings));
@@ -389,9 +486,10 @@ client.on('messageCreate', async (message) => {
     if (!botState.isAwake && message.author.id !== config.OWNER_ID) {
         if (mentionsBot || isDM) {
             const sleepResponses = [
-                "Zzz... I'm sleeping rn bro, hit me up later 😴",
-                "Yo I'm knocked out, try again when I'm awake 💤",
-                "Can't talk rn, catching some Z's 😪"
+                "Zzz... Estoy durmiendo hermano, hit me up later 😴",
+                "Ay loco I'm knocked out, try again cuando esté awake 💤",
+                "No puedo talk rn, catching some Z's en el barrio 😪",
+                "Durmiendo like a baby, déjame dormir papi 💤🇵🇷"
             ];
             return await message.reply(getRandomElement(sleepResponses));
         }
@@ -410,29 +508,41 @@ client.on('messageCreate', async (message) => {
             return;
         }
 
-        // Handle regular conversation
-        if (mentionsBot || isDM || Math.random() < 0.1) { // Random responses to non-mentions
-            // Add random emoji reactions
-            if (Math.random() < 0.3) {
-                const emojis = ['😎', '🔥', '💯', '😤', '👀', '💀', '🤙', '😅'];
-                await message.react(getRandomElement(emojis));
-            }
-
+        // Handle regular conversation - FIXED: Better context awareness
+        if (mentionsBot || isDM) {
+            // Always respond to mentions and DMs
             const response = await AISystem.generateResponse(message, message.content);
             
-            // Send GIF occasionally
-            if (Math.random() < 0.2 && config.GIFS[botState.mood]) {
+            // Add emoji reactions based on content
+            const reactionChance = Math.random();
+            if (reactionChance < 0.4) {
+                const contextEmojis = this.getContextualEmojis(content);
+                await message.react(getRandomElement(contextEmojis));
+            }
+            
+            // Send response (less random GIFs, more contextual)
+            if (Math.random() < 0.15 && config.GIFS[botState.mood]) {
                 const gifUrl = getRandomElement(config.GIFS[botState.mood]);
                 await message.reply(`${response}\n${gifUrl}`);
             } else {
                 await message.reply(response);
             }
 
-            // Mood changes based on conversation
-            if (content.includes('fuck') || content.includes('shit') || content.includes('damn')) {
-                if (message.author.id !== config.OWNER_ID && Math.random() < 0.5) {
-                    PersonalitySystem.changeMood('annoyed');
-                }
+            // Smart mood changes based on conversation context
+            this.updateMoodBasedOnMessage(message, content);
+            
+        } else if (Math.random() < 0.03) { 
+            // MUCH less random responses to avoid spam - only 3% chance
+            const casualResponses = [
+                "facts 💯",
+                "bet",
+                "no cap fr",
+                "periodt",
+                "sheesh 🔥"
+            ];
+            await message.react('👀');
+            if (Math.random() < 0.5) {
+                await message.reply(getRandomElement(casualResponses));
             }
         }
 
