@@ -1,0 +1,28 @@
+{
+  "prefix": "!",
+  "ownerIds": ["1219957467690172517", "1378808921732550706"],
+  "modRoleNames": ["Moderator", "Admin"],
+  "logChannel": "mod-logs",
+  "welcomeChannel": "welcome",
+  "suggestionsChannel": "suggestions",
+  "levelUpRole": {
+    "5": "Active Member",
+    "10": "Veteran",
+    "20": "Elite",
+    "50": "Legend"
+  },
+  "giveaway": {
+    "managerRoles": ["Administrator", "Giveaway Host"],
+    "reactionEmoji": "🎉"
+  },
+  "automod": {
+    "badWords": ["badword1", "badword2"],
+    "linkWhitelist": ["discord.com", "discordapp.com"],
+    "maxWarnings": 3
+  },
+  "xp": {
+    "minXp": 15,
+    "maxXp": 25,
+    "cooldown": 60
+  }
+}
