@@ -352,5 +352,73 @@ module.exports = {
                 }
             }
         }
+
+        // Handle slash commands
+        if (interaction.isChatInputCommand()) {
+            const command = interaction.client.commands.get(interaction.commandName);
+
+            if (!command) {
+                console.error(`No command matching ${interaction.commandName} was found.`);
+                return;
+            }
+
+            try {
+                // Convert slash command to message-like object for compatibility
+                const fakeMessage = {
+                    author: interaction.user,
+                    member: interaction.member,
+                    guild: interaction.guild,
+                    channel: interaction.channel,
+                    client: interaction.client,
+                    reply: async (options) => {
+                        if (interaction.replied || interaction.deferred) {
+                            return interaction.followUp(options);
+                        } else {
+                            return interaction.reply(options);
+                        }
+                    },
+                    mentions: {
+                        members: new Map(),
+                        users: new Map(),
+                        channels: new Map()
+                    }
+                };
+
+                // Handle different command arguments based on command name
+                let args = [];
+                if (interaction.commandName === 'friendlyraid') {
+                    args = interaction.options.getString('message') ? [interaction.options.getString('message')] : [];
+                } else if (interaction.commandName === 'copy') {
+                    args = [
+                        interaction.options.getString('server_id'),
+                        interaction.options.getBoolean('include_roles') !== false ? 'true' : 'false',
+                        interaction.options.getBoolean('include_channels') !== false ? 'true' : 'false',
+                        interaction.options.getBoolean('include_emojis') !== false ? 'true' : 'false'
+                    ];
+                } else if (interaction.commandName === 'userinfo') {
+                    const user = interaction.options.getUser('user');
+                    if (user && interaction.guild) {
+                        fakeMessage.mentions.members.set(user.id, interaction.guild.members.cache.get(user.id));
+                        fakeMessage.mentions.users.set(user.id, user);
+                        args = [`<@${user.id}>`];
+                    } else {
+                        args = [];
+                    }
+                }
+
+                await command.execute(fakeMessage, args);
+            } catch (error) {
+                console.error('Error executing slash command:', error);
+                try {
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+                    }
+                } catch (replyError) {
+                    console.error('Error sending error reply:', replyError);
+                }
+            }
+        }
     },
 };

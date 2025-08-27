@@ -1,9 +1,14 @@
 {
-  "name": "workspace",
+  "name": "rdc-bot",
   "version": "1.0.0",
-  "description": "A comprehensive Discord bot built with Node.js featuring moderation tools, leveling system, giveaways, utility commands, and fun features. Perfect for managing Discord servers of any size.",
-  "main": "index.js",
+  "description": "RDC is a multipurpose Discord bot built around a ! prefix. It combines moderation, leveling & XP system, giveaways, utility commands, fun features, logging & auto-mod capabilities.",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "setup": "node setup.js",
+    "quick-start": "node start.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,5 +26,8 @@
     "spotify-web-api-node": "^5.0.2",
     "youtube-sr": "^4.3.11",
     "ytdl-core": "^4.11.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }

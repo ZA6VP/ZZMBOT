@@ -26,5 +26,9 @@
     "enabled": true,
     "filterBadWords": true,
     "blockLinks": false
+  },
+  "welcome": {
+    "enabled": false,
+    "channel": null
   }
 }
